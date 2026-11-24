@@ -1,6 +1,34 @@
 # Controller support: research and plan
 
-Status: plan, nothing implemented. Branch `claude/controller-support-plan-yjc276`.
+Status: **implemented** on branch `claude/controller-support-plan-yjc276`, in both repositories. **Not yet run
+in game**: Phase 0's checks below are still open.
+
+Decisions taken:
+- **The hook is in nui from the start** (Phase 6 first). It ships as nui 1.3.0 on the toboshii/nui fork:
+  `src/PadHook/PadHook.h` (a shared bus, PadHook 1) and `src/pad.cpp` (the Lua functions). Chronicle vendors
+  it like the rest of nui.
+- **XInput only.** `PadState::source` and the single XInput-layout button word are there so a DirectInput
+  source can join the same bus in a later revision.
+- **L3 + R3** takes the pad and gives it back.
+- **On by default** (`pad = true`). Until something holds it, the hook only records: the game gets exactly
+  what it read.
+
+What changed from the plan:
+- The patch uses the Windows hot-patch form (`8B FF` becomes `EB F9`, and a long jump goes into the padding),
+  not an import-table or detour patch. So Phase 0's question 1 becomes: is `xinput1_3!XInputGetState`
+  hot-patchable? If not, the hook refuses and says which bytes it found.
+- "Held before the capture" means what the game had already seen pressed (its last output), not what is held
+  at the first read after the capture. A press arriving in that same read is Chronicle's.
+- Phase 1's keyboard driver was not built.
+- If the hold lapses during a stall, Chronicle takes the pad again on the next frame, and the buttons still
+  held wait for their release.
+
+Where it was tested:
+- `test/test_pad.lua` (84 checks) ran here, with stock Lua 5.1 and the harness's fake DLL.
+- The mask rules and the thunk bytes ran on 32-bit Linux, against a stand-in `windows.h`. The thunk was
+  disassembled.
+- nui's `test/build_pad_test.sh` builds here, but Wine does not start in this container, so its exes were
+  not run. Run it on Windows: `sh test/build_pad_test.sh --self-test`.
 
 ## 1. What "controller support" has to mean
 

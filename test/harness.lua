@@ -45,7 +45,7 @@ function H.fake_native(opts)
     local N = {layers = {}, pos = {}, sent = {}, textures = {}, next_tex = 2, started = false, wt = 6, opts = opts,
                starts = 0, wintypes = 0, statuses = 0}
     local need = {W = 7, T = 5, H = 6, R = 6, Q = 12, I = 6, G = 7, C = 5, c = 1}
-    function N.version() return '2.0.2' end
+    function N.version() return '2.1.0' end
     -- opts.fail: start() fails with that message (and opts.retry_ms: retry after that many ms, as while the hook is missing)
     function N.start()
         N.starts = N.starts + 1
@@ -58,7 +58,7 @@ function H.fake_native(opts)
         N.statuses = N.statuses + 1
         local n = 0
         for _ in pairs(N.layers) do n = n + 1 end
-        return {version = '2.0.2', running = N.started, message = 'fake', hook = 'fake', layers = n, quads = 0,
+        return {version = '2.1.0', running = N.started, message = 'fake', hook = 'fake', layers = n, quads = 0,
                 batches = 0, last_us = 0, max_us = 0, build_us = 0, uploads = 0, texture_kb = 0, cpu_pixels_kb = 0,
                 vertex_kb = 0, pictures = 0, rt_w = 3840, rt_h = 2160, ui_found = opts.ui_w ~= nil,
                 ui_w = opts.ui_w or 0, ui_h = opts.ui_h or 0, window_type = N.wt, drawing = opts.drawing,
@@ -103,6 +103,25 @@ function H.fake_native(opts)
     function N.wtread() return opts.game_type end
     function N.wtfind() return 0, {} end
     function N.wtwatch() return true end
+    -- the controller (nui 1.3.0): N.padstate is what the game "read" (set its fields and bump seq), N.pad_holding the capture.
+    -- opts.pad_fail: pad_start fails with that message (opts.pad_retry_ms: and asks to be retried); opts.pad_config: pad_config()
+    N.padstate = {seq = 1, buttons = 0, lt = 0, rt = 0, lx = 0, ly = 0, rx = 0, ry = 0}
+    N.pad_holding, N.pad_joined, N.captures, N.pad_starts = false, false, 0, 0
+    function N.pad_start()
+        N.pad_starts = N.pad_starts + 1
+        if opts.pad_fail then return false, opts.pad_fail, opts.pad_retry_ms end
+        N.pad_joined = true
+        return true, 'hook installed'
+    end
+    function N.pad()
+        if not N.pad_joined then return nil end
+        local p = N.padstate
+        return p.seq, p.buttons, p.lt, p.rt, p.lx, p.ly, p.rx, p.ry, 0, N.pad_holding
+    end
+    function N.pad_capture(on) N.pad_holding = on and true or false N.captures = N.captures + 1 return true end
+    function N.pad_config() return opts.pad_config end
+    function N.pad_status() return {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding} end
+    function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
     return N
 end
 
