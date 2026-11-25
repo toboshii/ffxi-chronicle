@@ -1,6 +1,7 @@
 # Test findings: the plan for the fixes
 
-For review. Nothing in this plan is built yet.
+Status, 2026-11-25: the five decisions in section 9 are taken, all as recommended. Step 1 is built:
+nui 1.4.2 (`6e72c8b`) and `_chronicle.dll` 2.1.3 (`4f5b545`). Steps 2 to 4 are not built yet.
 
 This plan answers the test agent's report of 2026-11-25 (`handover-controller-1.md`). The tests ran on
 Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this plan with
@@ -292,9 +293,11 @@ from the HD path. If you see that on Linux, it needs its own investigation. It i
 
 Step 3 can start without the answers. Q1 decides how much the check in `pad()` must do.
 
-## 9. Decisions for you
+## 9. Decisions
 
-| | Decision | Recommended |
+All five are taken as recommended.
+
+| | Decision | Taken |
 |---|---|---|
 | D1 | Find the pointer by value, or by a signature over the wrapper. The signature needs Q2 first. | By value |
 | D2 | Keep the export hot patch as a fallback, or remove it and keep one route | Keep it |
