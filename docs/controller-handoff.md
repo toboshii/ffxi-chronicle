@@ -37,7 +37,7 @@ On the Chronicle branch, newest first:
 - `8f0c9a5` sync nui 1.4.1, `_chronicle.dll` 2.1.2
 - `550e5a1` the hook keeps L3 + R3 from the game
 - `58b6c16` the controller feature
-- `5fa0ddd` the plan
+- `646ca78` the plan
 
 The base is `f9fb5b6`.
 
