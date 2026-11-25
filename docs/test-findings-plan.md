@@ -1,7 +1,8 @@
 # Test findings: the plan for the fixes
 
-Status, 2026-11-25: the five decisions in section 9 are taken, all as recommended. Step 1 is built:
-nui 1.4.2 (`6e72c8b`) and `_chronicle.dll` 2.1.3 (`4f5b545`). Steps 2 to 4 are not built yet.
+Status, 2026-11-25: the five decisions in section 9 are taken, all as recommended. Steps 1 and 2 are
+built, which is test build 1: nui 1.4.2 (`6e72c8b`), `_chronicle.dll` 2.1.3 (`4f5b545`) and the config read
+(`851707f`). Steps 3 and 4 are not built yet.
 
 This plan answers the test agent's report of 2026-11-25 (`handover-controller-1.md`). The tests ran on
 Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this plan with
