@@ -17,6 +17,11 @@ open. The user asked for nui's `main` to stay clean.
 
 ## 2. Repositories, branches, commits
 
+The review branch `claude/chronicle-workstreams-review-dp0k36` carries the same commits in both
+repositories. On 2026-11-26 it was rebased onto the synced forks, so its hashes differ. The hashes in
+this document name the commits on `claude/controller-support-plan-yjc276`, which is unchanged.
+`docs/test-findings-plan.md` §10 maps them to the review branch.
+
 | Repo | Branch | Head | Notes |
 |---|---|---|---|
 | `toboshii/ffxi-chronicle` | `claude/controller-support-plan-yjc276` | `8f0c9a5`, then this document's commit | The user's fork of `jintawk/ffxi-chronicle`. |

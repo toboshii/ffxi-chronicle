@@ -1,12 +1,13 @@
 # Test findings: the plan for the fixes
 
 Status, 2026-11-26:
-- Steps 1 and 2 are built, which is test build 1: nui 1.4.2 (`6e72c8b`), `_chronicle.dll` 2.1.3
-  (`4f5b545`) and the config read (`851707f`).
+- Steps 1 and 2 are built, which is test build 1: nui 1.4.2 (`d8d94e5`), `_chronicle.dll` 2.1.3
+  (`1fd1bb6`) and the config read (`8591a96`).
 - The test agent answered section 8 in a second report (`handover-controller-2.md`). Step 3 is
-  redesigned after it, because the first design would have crashed the game (section 5a). The new
-  design waits for your OK on D1. The mouse merge (§4b) waits for D6.
-- Step 3, step 4 and the merge are not built yet.
+  redesigned after it, because the first design would have crashed the game (section 5a). You approved
+  the new design (D1).
+- Both branches are rebased onto the synced forks (D6, §4b). Chronicle now carries 2.1.1's mouse fix.
+- Step 3 and step 4 are not built yet.
 
 This plan answers the test agent's first report of 2026-11-25 (`handover-controller-1.md`). Those tests
 ran on Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this plan with
@@ -14,7 +15,10 @@ ran on Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this pl
 controller support in nui and Chronicle.
 
 Work happens on `claude/chronicle-workstreams-review-dp0k36` in both repositories. It started from the
-same commits as `claude/controller-support-plan-yjc276` (Chronicle `867e46a`, nui `cf75bf8`).
+same commits as `claude/controller-support-plan-yjc276` (Chronicle `867e46a`, nui `cf75bf8`). On
+2026-11-26 it was rebased onto the synced forks, so its commits have new hashes. Section 10 maps the old
+hashes to the new ones. The old branch is unchanged, and the hashes in `docs/controller-handoff.md`
+still name its commits.
 
 ## 1. The findings, and what this plan does with each
 
@@ -25,12 +29,12 @@ same commits as `claude/controller-support-plan-yjc276` (Chronicle `867e46a`, nu
 | 1, §4 | The game's pad config is read only after the hook succeeds | Confirmed in the code | Step 2 (built) |
 | 1, §3 | That machine's `xinput1_3.dll` is not hot-patchable, so the pad hook refuses | Confirmed in the code | Step 3 |
 | 1, §5 | Research: Windower and DirectInput, the game's input merge and mask, a keyboard driver, key bindings, a main menu item | Useful. None of it blocks the fixes. | Step 4 records it. Section 7 proposes what comes next. |
-| 2, A | At a UI scale above 1, the mouse lands down and to the right of the window's buttons. Fixed upstream and released as Chronicle 2.1.1. | Accepted as reported | §4b: merge 2.1.1 |
+| 2, A | At a UI scale above 1, the mouse lands down and to the right of the window's buttons. Fixed upstream and released as Chronicle 2.1.1. | Accepted as reported | §4b: rebased onto 2.1.1 (done) |
 | 2, B | The answers to Q1, Q2 and Q3 | They change step 3 | Section 5, rewritten |
 
 ## 2. Which build was tested
 
-The cache status line in the first report names `chronicle 2.1.1`. On the branch, `_chronicle.dll`
+The cache status line in the first report names `chronicle 2.1.1`. On the old branch, `_chronicle.dll`
 2.1.1 is commit `550e5a1`, which vendors nui 1.4.0. nui 1.4.0 has no HD decode. The branch head at the
 time, `8f0c9a5`, shipped `_chronicle.dll` 2.1.2 with nui 1.4.1.
 
@@ -46,7 +50,7 @@ identify.
 ### Why
 
 An atlas's cache key is the window type, a hash of the install folder, and `kFmtAtlas`. The HD commit
-(`5a8b5e1`) changed what `Assets::load` produces on an HD install, but `kFmtAtlas` stayed at 2. So nui
+(`5a8b5e1`, now `3dc8da1`) changed what `Assets::load` produces on an HD install, but `kFmtAtlas` stayed at 2. So nui
 1.2.10 and nui 1.4.1 use one key for different pixels. The first module to create the entry wins, and
 the other module draws those pixels.
 
@@ -121,44 +125,45 @@ No nui change.
 options. On the old code, 5 of them fail and print the report's line exactly. All other Lua suites pass,
 apart from the 4 `test_screens` failures the base commit also has on Linux.
 
-## 4b. Chronicle 2.1.1's mouse fix (a merge)
+## 4b. Chronicle 2.1.1's mouse fix: rebased, done
 
 The second report's Part A: at a UI scale above 1, Windower's mouse event counts in UI pixels, and
-Chronicle read it as window pixels. Upstream fixed it and released it as Chronicle 2.1.1. The diff is
+Chronicle read it as window pixels. Upstream fixed it and released it as Chronicle 2.1.1. The fix is in
 `core/nui.lua`, four lines of `chronicle.lua`, and `test/test_input.lua`, with the harness's fake
-Windower taking a UI size. The report suggests a rebase of the branch onto that tag.
+Windower taking a UI size.
 
-### Getting the commits
+You synced both forks and chose a rebase (D6). This is what happened.
 
-The fork does not have them. The `master` branch of `toboshii/ffxi-chronicle` is still at the base
-`f9fb5b6`. There are two ways in:
+### Chronicle
 
-1. You sync the fork's `master` with upstream on GitHub. Then I merge `origin/master`.
-2. I add `jintawk/ffxi-chronicle` to this session, read-only, and merge its tag.
+- Upstream had re-committed the last three commits of our base. The new `5dffdfa` has the same tree as
+  our old base `f9fb5b6`, but `f9fb5b6` is not in the new `master`. So the rebase moved only our own
+  twelve commits, onto `master` at `338643d`.
+- Two conflicts, both in the first pad commit. `core/ident.lua` keeps 2.2.0. In `chronicle.lua`,
+  `//cr status` keeps upstream's new UI scale and mouse factor, followed by the branch's pad lines.
+- The result differs from the old branch only by upstream's own changes. Every added and removed line
+  matches upstream's diff. `plugin/`, `libs/` and the UI code are unchanged, and `_chronicle.dll` is the
+  same blob.
+- The mouse is converted in exactly one place, `chronicle.lua:468`. Nothing in `ui/`, `ui/nav.lua` or
+  the pad code divides by the view factor again. The 3 px rule that gives the hover back to the mouse
+  compares coordinates after that one conversion.
+- Upstream's CI steps pass here: every Lua file compiles (3,112 files), and the nine suites pass.
+  `test_input` has the report's 85 checks. `test_pad` has 94. `test_screens` has the same 4 Linux-only
+  failures as before.
 
-I recommend the first. It keeps this session to the repositories it already has.
+### nui
 
-### Merge, not rebase (decision D6)
-
-I recommend a merge:
-
-- A rebase rewrites every commit on the branch and needs a force push.
-- `docs/controller-handoff.md` and this plan cite branch commits by hash. A rebase breaks those.
-- The first report's §6 asks for the work to land "as those commits, with that authorship". A merge
-  keeps both. A rebase keeps the authorship but not the commits.
-- If the upstream pull request wants a straight history, a rebase can still happen then.
-
-### Expected conflicts, and the checks after
-
-- `core/ident.lua`: the version line. Keep 2.2.0.
-- `test/harness.lua`: the fake Windower's UI size, next to the branch's pad fake and DLL version. Keep
-  both.
-- The report warns about a second conversion on an input path. After the merge, grep `ui/window.lua`,
-  `ui/nav.lua` and the pad code for any other division by the view factor. One case to check: the 3 px
-  mouse move that gives the hover back to the mouse must compare converted coordinates.
-- Then every Lua suite. The report counts 85 checks in `test_input` after the fix.
-
-The merge goes into test build 2.
+- `main` gained four upstream commits: CI, badges, and the corrected `screen()` text in
+  `docs/lua-api.md`. Our old base `7b566ed` is still in it, so this was a plain rebase.
+- The two merge commits (`2745771`, `6862a70`) are gone. The HD commit is now an ordinary commit, with
+  its authorship.
+- One conflict, in `README.md`. The 1.3.0 commit had saved the file with LF line endings, but upstream
+  keeps it CRLF, and `.gitattributes` stores the bytes as they are. So that commit rewrote all 524
+  lines. The rebase merged it with the CRs taken out and wrote the result back as CRLF. The 1.3.0
+  commit now changes the 11 README lines it means to.
+- `src/`, `test/`, `RELEASES` and `VERSION` are identical to the old branch, so the vendored tree hash
+  and the 1.4.2 release line still hold. Upstream's CI steps pass: the demo module builds, the frozen
+  layouts are unchanged, and the frozen check's self-test passes. The Linux pad tests pass.
 
 ## 5. Step 3: hook the game's XInput wrapper (PadHook revision 3, nui 1.5.0)
 
@@ -395,31 +400,59 @@ One new question, for the second report's author: does `xinputdll.dll` do anythi
 
 | | Decision | State |
 |---|---|---|
-| D1 | How step 3 hooks the client | **Changed, needs your OK.** It was "find the pointer by value". The second report showed that this finds nothing, and section 5a shows that a thunk in the slot crashes the game. Proposed: find the wrapper by its signature, and patch its load of the slot. |
+| D1 | How step 3 hooks the client | **Changed, and approved.** It was "find the pointer by value". The second report showed that this finds nothing, and section 5a shows that a thunk in the slot crashes the game. Now: find the wrapper by its signature, and patch its load of the slot. |
 | D2 | Keep the export hot patch as a fallback, or remove it and keep one route | Keep it. Unchanged. |
 | D3 | On unload, leave the thunk in the game's pointer, or write the old pointer back | No longer applies. The patch is in code and is never undone, like UiHook's. |
-| D4 | Two test builds (steps 1 and 2, then step 3), or one build with all three | Two. Build 1 is ready. Build 2 gets step 3 and the mouse merge. |
+| D4 | Two test builds (steps 1 and 2, then step 3), or one build with all three | Two. Build 1 is ready. Build 2 gets step 3 and the mouse fix. |
 | D5 | The keyboard driver: after this round, or in it | After. Unchanged. |
-| D6 | Bring in Chronicle 2.1.1 by a merge or a rebase, and from a synced fork or from the upstream repository | **New, needs your answer.** Recommended: a merge, from the fork after you sync its `master`. |
+| D6 | Bring in Chronicle 2.1.1 by a merge or a rebase, and from a synced fork or from the upstream repository | A rebase, onto the synced forks. Done (§4b). |
 
 ## 10. Commits, and the retest
 
-All new commits use the author Toboshii Nakama, with no trailers. They go on top of the existing commits,
-which keep their authorship, as the first report's §6 asks.
+All new commits use the author Toboshii Nakama, with no trailers. The rebase kept every commit's author.
 
 nui, on `claude/chronicle-workstreams-review-dp0k36`:
 
-1. `nui 1.4.2: ...` (step 1), `6e72c8b`. Done.
+1. `nui 1.4.2: ...` (step 1), `d8d94e5`. Done.
 2. `nui 1.5.0: ...` (step 3: PadHook revision 3, its tests, the docs, the `l_screen` comment, the
    release)
 
 Chronicle, on the same branch name:
 
-1. `nui 1.4.2: ...` (the sync, `_chronicle.dll` 2.1.3), `4f5b545`. Done.
-2. `pad: ...` (step 2), `851707f`. Done.
-3. A merge of Chronicle 2.1.1 (§4b)
+1. `nui 1.4.2: ...` (the sync, `_chronicle.dll` 2.1.3), `1fd1bb6`. Done.
+2. `pad: ...` (step 2), `8591a96`. Done.
+3. The rebase onto Chronicle 2.1.1 (§4b). Done.
 4. `nui 1.5.0: ...` (the sync, `_chronicle.dll` 2.1.4)
 5. `docs: ...` (step 4)
+
+### Old and new hashes after the rebase
+
+| Repo | Old | New | Commit |
+|---|---|---|---|
+| nui | `7b566ed` | `8b2e53c` | the base: upstream `main` |
+| nui | `32e8138` | `06bb59c` | nui 1.3.0 |
+| nui | `294b75a` | `6a81de5` | nui 1.4.0 |
+| nui | `5a8b5e1` | `3dc8da1` | assets: the HD texture pack |
+| nui | `2745771`, `6862a70` | none | the two merge commits, dropped |
+| nui | `2dae3a5` | `edaab6a` | nui 1.4.1 |
+| nui | `cf75bf8` | `429c39a` | test: PadHook on 32-bit Linux |
+| nui | `6e72c8b` | `d8d94e5` | nui 1.4.2 |
+| Chronicle | `f9fb5b6` | `338643d` | the base: upstream `master` (2.1.1, CI, badges) |
+| Chronicle | `646ca78` | `dab42fe` | docs: the controller plan |
+| Chronicle | `58b6c16` | `034d2ef` | pad: the controller |
+| Chronicle | `550e5a1` | `861c03f` | pad: L3 + R3 kept from the game |
+| Chronicle | `8f0c9a5` | `889017e` | nui 1.4.1 |
+| Chronicle | `f9fd254` | `6a5a178` | docs: the handoff |
+| Chronicle | `867e46a` | `92e6990` | docs: the plan's hash in the handoff |
+| Chronicle | `8d47c38` | `5f03c0a` | docs: this plan |
+| Chronicle | `4f5b545` | `1fd1bb6` | nui 1.4.2 |
+| Chronicle | `7749b0f` | `f3f1806` | docs: decisions, step 1 |
+| Chronicle | `851707f` | `8591a96` | pad: the config read |
+| Chronicle | `7f76a66` | `ac2a3f5` | docs: steps 1 and 2 |
+| Chronicle | `5771205` | `8fc37ec` | docs: step 3 redesigned |
+
+Older commit messages still name old hashes, for example nui 1.4.1's mention of `5a8b5e1`. A rebase
+cannot change them without rewriting the messages, so this table is the key.
 
 ### Retest with build 1 (steps 1 and 2)
 
@@ -428,7 +461,7 @@ Chronicle, on the same branch name:
 3. `//cr pad status`, with the hook still refused: the config line names the registry key and the
    player's real Confirm and Cancel.
 
-### Retest with build 2 (step 3 and the merge)
+### Retest with build 2 (step 3 and the mouse fix)
 
 1. `//cr pad status`: `live at FFXiMain's XInput wrapper`.
 2. Start with no pad attached, then plug one in. Chronicle still takes the pad with L3 + R3.
