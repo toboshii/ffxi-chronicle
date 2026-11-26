@@ -1,34 +1,40 @@
 # Controller support: research and plan
 
-Status: **implemented** on branch `claude/controller-support-plan-yjc276`, in both repositories. **Not yet run
-in game**: Phase 0's checks below are still open.
+Status, 2026-11-26: **implemented**, on `claude/chronicle-workstreams-review-dp0k36` in both repositories. It
+ran in game once, on nui 1.3.0: navigation and taking the pad worked. Test build 2 (nui 1.5.0, `_chronicle.dll`
+2.1.4) has not run in game yet. `docs/controller-handoff.md` has the state of the work, and
+`docs/test-findings-plan.md` has the fixes from the two test reports.
 
 Decisions taken:
-- **The hook is in nui from the start** (Phase 6 first). It ships as nui 1.3.0 on the toboshii/nui fork:
-  `src/PadHook/PadHook.h` (a shared bus, PadHook 1) and `src/pad.cpp` (the Lua functions). Chronicle vendors
-  it like the rest of nui.
+- **The hook is in nui from the start** (Phase 6 first). It is `src/PadHook/PadHook.h` (a shared bus, PadHook 1)
+  and `src/pad.cpp` (the Lua functions), on the toboshii/nui fork. Chronicle vendors it like the rest of nui.
 - **XInput only.** `PadState::source` and the single XInput-layout button word are there so a DirectInput
   source can join the same bus in a later revision.
-- **L3 + R3** takes the pad and gives it back.
+- **L3 + R3** takes the pad and gives it back. Since nui 1.4.0 the hook keeps that chord from the game.
 - **On by default** (`pad = true`). Until something holds it, the hook only records: the game gets exactly
   what it read.
 
 What changed from the plan:
-- The patch uses the Windows hot-patch form (`8B FF` becomes `EB F9`, and a long jump goes into the padding),
-  not an import-table or detour patch. So Phase 0's question 1 becomes: is `xinput1_3!XInputGetState`
-  hot-patchable? If not, the hook refuses and says which bytes it found.
+- **The hook patches the client's own XInput wrapper** (nui 1.5.0, PadHook revision 3). The client does not call
+  `xinput1_3.dll` itself. It loads its own shim, `xinputdll.dll`, and calls it through a small wrapper in
+  `FFXiMain.dll` (§3). nui finds that wrapper by its signature and changes one instruction of it. This answers
+  Phase 0's question 1.
+- The first build (nui 1.3.0 to 1.4.2) hot-patched `xinput1_3.dll!XInputGetState` instead. On the first test
+  machine that function started `55 8B EC` and was not hot-patchable, so the hook refused. That patch is now
+  the fallback, for a client whose wrapper nui does not find.
 - "Held before the capture" means what the game had already seen pressed (its last output), not what is held
   at the first read after the capture. A press arriving in that same read is Chronicle's.
-- Phase 1's keyboard driver was not built.
+- Phase 1's keyboard driver was not built. It is the next piece of work (`docs/test-findings-plan.md` §7).
 - If the hold lapses during a stall, Chronicle takes the pad again on the next frame, and the buttons still
   held wait for their release.
 
 Where it was tested:
-- `test/test_pad.lua` (84 checks) ran here, with stock Lua 5.1 and the harness's fake DLL.
-- The mask rules and the thunk bytes ran on 32-bit Linux, against a stand-in `windows.h`. The thunk was
-  disassembled.
-- nui's `test/build_pad_test.sh` builds here, but Wine does not start in this container, so its exes were
-  not run. Run it on Windows: `sh test/build_pad_test.sh --self-test`.
+- `test/test_pad.lua` (100 checks) ran here, with stock Lua 5.1 and the harness's fake DLL.
+- nui's `test/pad_linux/run.sh` runs on 32-bit Linux, against a stand-in `windows.h`. It runs the mask, the
+  chord, and the client's own wrapper bytes through the real patch, thunk, adapter and dispatcher, with the
+  stack checked on every call. It also runs the first design of the route 1 thunk, which must crash.
+- nui's `test/build_pad_test.sh` builds here, but Wine does not start in this container, so its exes were not
+  run. Run it on Windows: `sh test/build_pad_test.sh --self-test`.
 
 ## 1. What "controller support" has to mean
 
@@ -86,6 +92,68 @@ tables; `features/_index.md` for the hooked functions); AshitaXI/Ashita-v4beta `
 ThornyFFXI/tCrossBar `controller.lua` and `resources/controllers/xbox.lua`;
 AliekberFFXI/xivcrossbar `ffxi_xinput.ahk` and its README; Windower/Fenestra
 `core/src/wrappers/direct_input.cpp`; ffxiah.com forum threads 46689, 47705, 48882 and 57877.
+
+### What the test reports found in the client
+
+Two test reports (2026-11-25 and 2026-11-26) looked at the client itself. The second one replaces the first
+table row above: the client does not call `xinput1_3.dll` itself.
+
+Addresses are from the 2026-11-02 build where the report names one, and some are given for the 2026-10-13
+build too. The others are as reported, and can differ in another build. nui never uses an address. It finds
+the wrapper by its signature.
+
+**The client's XInput shim.**
+- With Enable XInput on, the client loads its own shim, `xinputdll.dll`, from the game folder (6,656 bytes).
+- The shim exports `XInputEnable_` (ordinal 1), `XInputGetState_` (2) and `XInputSetState_` (3). It imports
+  `XINPUT1_3.dll` by ordinal: 5, 3 and 2.
+- The shim's functions are `__cdecl`: the caller pops the arguments.
+
+**The four slots.** The client keeps the shim's handle and its three functions in four slots in a row:
+
+| Build | Handle | GetState | SetState | Enable |
+|---|---|---|---|---|
+| 2026-11-02 | `0x104576fc` | `0x10457700` | `0x10457704` | `0x10457708` |
+| 2026-10-13 | `0x1045654c` | `0x10456550` | | |
+
+**The wrappers.** One wrapper reads the GetState slot. It is at `0x10008ea0` in both builds, and its bytes are
+the same in both apart from the two slot addresses:
+
+```
+A1 <handle slot>   85 C0 74 1B        mov eax, [handle] / test / jz fail
+A1 <GetState slot> 85 C0 74 12        mov eax, [GetState] / test / jz fail
+8B 4C 24 08 8B 54 24 04 51 52         push the two arguments
+FF D0 83 C4 08 C2 08 00               call eax / add esp, 8 / ret 8
+B8 01 00 00 00 C2 08 00               fail: mov eax, 1 / ret 8
+```
+
+The signature `A1 ?? ?? ?? ?? 85 C0 74 1B A1 ?? ?? ?? ?? 85 C0 74 12 8B 4C 24 08 8B 54 24 04 51 52 FF D0 83 C4 08
+C2 08 00` matches the GetState wrapper (+0x00) and the SetState wrapper (+0x30). In the GetState match, the
+second address is the first plus 4. In the SetState match, it is the first plus 8. The Enable wrapper (+0x60)
+has another shape.
+
+**When the client writes the slots.**
+- Its pad setup (`0x100083d0`) writes all four slots when Enable XInput (`0x10456de8`) is on.
+- That happens at input init, on each device re-enumeration, and every 91 polls (about 1.5 seconds) while no
+  pad is attached. The values are the same each time.
+- The unloader (`0x10008e70`) frees the shim and zeros only the handle slot. Nothing zeros the function
+  slots. Every wrapper tests the handle first.
+
+**Why the slot cannot hold the hook.** The wrapper calls the shim as `__cdecl` and pops the arguments itself.
+A `__stdcall` dispatcher reached by a jump from the slot pops them a second time, and the wrapper's `ret 8`
+then returns to a wrong address. nui's `test/pad_linux` runs the client's real wrapper bytes that way and gets a
+segmentation fault. So nui patches the wrapper's load of the slot instead (PadHook revision 3).
+
+**Windower.** Windower wraps DirectInput8 and has no XInput code, so the XInput route does not have to chain
+through a Windower hook (§8, risk 1).
+
+**Other findings, for later work** (`docs/test-findings-plan.md` §7):
+- The game merges its logical axes in `Input_GetAxisValueMerged`. `FUN_10124b70` writes its input mask, and
+  the game calls it from sixteen places.
+- The keyboard bindings with ids 74 to 137 are not in the registry or in `cnf.dat`. They exist only in memory.
+  The retail client may offer no keyboard remapping at all. Nobody has confirmed that from the game's menus yet.
+- In the stock English menu bindings, D, G, K and O are free.
+- A "Chronicle" item in the game's main menu has two open questions: whether the element array can take a
+  sixteenth item, and whether `Cmd_ExecuteLine` reaches a Windower command.
 
 ### Options
 
@@ -373,9 +441,10 @@ These follow the existing harness (`test/harness.lua`, fake DLL, `env.frame`, `e
 
 ## 8. Risks and open questions
 
-1. **Windower 4 is closed source.** Phase 0 must check, in game, that Windower does not already
-   patch `XInputGetState`. If it does, the thunk chains through it, or the hook refuses and says
-   so.
+1. **Windower 4 is closed source.** Closed for the XInput route: the first test report found that
+   Windower wraps DirectInput8 and has no XInput code (§3). The question stays open for Phase 5,
+   the DirectInput route, because Windower wraps the keyboard device, whose vtable the joystick
+   device shares.
 2. **Ashita.** Chronicle is a Windower addon, but if the DLL is ever loaded under Ashita, Ashita
    owns this hook. Detect it and refuse.
 3. **The game's default layout is uncertain** (Confirm on A or B, what L3/R3 do). This is why

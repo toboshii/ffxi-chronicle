@@ -7,7 +7,11 @@ Status, 2026-11-26:
   redesigned after it, because the first design would have crashed the game (section 5a). You approved
   the new design (D1).
 - Both branches are rebased onto the synced forks (D6, §4b). Chronicle now carries 2.1.1's mouse fix.
-- Step 3 and step 4 are not built yet.
+- Steps 3 and 4 are built, which is test build 2: nui 1.5.0 (`50d18a6`), `_chronicle.dll` 2.1.4 (`c8ac1c6`),
+  the `//cr pad` message (`dec423c`) and the docs. They are on the branch `ccr-d3a8994b-5t63ba` in both
+  repositories, which continues from the review branch's heads. Section 5b lists what the build changed
+  from the design in section 5.
+- Nothing from step 3 has run in game or on Windows yet.
 
 This plan answers the test agent's first report of 2026-11-25 (`handover-controller-1.md`). Those tests
 ran on Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this plan with
@@ -165,7 +169,7 @@ You synced both forks and chose a rebase (D6). This is what happened.
   and the 1.4.2 release line still hold. Upstream's CI steps pass: the demo module builds, the frozen
   layouts are unchanged, and the frozen check's self-test passes. The Linux pad tests pass.
 
-## 5. Step 3: hook the game's XInput wrapper (PadHook revision 3, nui 1.5.0)
+## 5. Step 3: hook the game's XInput wrapper (PadHook revision 3, nui 1.5.0), built
 
 Rewritten on 2026-11-26 after the second report. Section 5a says why the first version had to go.
 
@@ -343,7 +347,32 @@ The release also corrects the comment above `l_screen` in `src/host.cpp`. It say
 source change belongs in a release, so it waits for this one. Upstream already corrected the same
 sentence in `docs/lua-api.md`.
 
-## 6. Step 4: documentation
+## 5b. What the build changed from this design
+
+A review of the change found no crash path, and the Linux tests pass. These points differ from the
+design above:
+
+- **The thunk and the adapter test F for zero.** The patch takes away the wrapper's own test of F. If
+  the client had written H but not F yet, the first design would have called address zero. Both now
+  return 1 then, as the wrapper itself does.
+- **The signature is 44 bytes.** It runs through the wrapper's fail path (`B8 01 00 00 00 C2 08 00`), so
+  the value the thunk returns without F is the client's own by construction.
+- **The `blocked` rule.** To revision 3, `blocked` means only that route 0 is refused for good.
+  `pad_start()` stops asking for a retry only when route 1 is refused for good as well. Before this, a
+  route 1 failure that can pass (the client writing its slots at that moment) could block the hook for
+  the whole session. Slots that hold other values on three tries count as refused for good.
+- **The pin is retried.** A handle that was not the shim is checked again once a second, so a read
+  between the client's FreeLibrary and its zeroing of H cannot stop the pin for good.
+- **`//cr pad` needs a Chronicle change** (`dec423c`). On route 1, `pad_start()` succeeds also in
+  DirectInput mode. `//cr pad` now checks `pad_status().shim` and says why it cannot take the pad,
+  instead of taking a pad that sends nothing.
+- **More in 1.5.0 than planned.** It carries `3259cf9` and `871a167` from `hd-texture-packs` (as
+  `d386009` and `4c5d3a1`). The box filter fix changes HD pixels, so the atlas format moves to 4. You
+  confirmed that. CI runs `test/pad_linux` and builds `test/build_pad_test.sh`.
+- **Wine still does not start** in this container (`free(): invalid pointer`, in the 32-bit and the
+  64-bit wineserver). The Windows pad suite was built and not run.
+
+## 6. Step 4: documentation, built
 
 - `docs/controller-support.md`: the Status header records the new route. §8 records that Windower wraps
   DirectInput8 and has no XInput code. That closes the chaining risk for the XInput route. The risk
@@ -411,19 +440,22 @@ One new question, for the second report's author: does `xinputdll.dll` do anythi
 
 All new commits use the author Toboshii Nakama, with no trailers. The rebase kept every commit's author.
 
-nui, on `claude/chronicle-workstreams-review-dp0k36`:
+nui, on `claude/chronicle-workstreams-review-dp0k36`, then on `ccr-d3a8994b-5t63ba`:
 
 1. `nui 1.4.2: ...` (step 1), `d8d94e5`. Done.
-2. `nui 1.5.0: ...` (step 3: PadHook revision 3, its tests, the docs, the `l_screen` comment, the
-   release)
+2. `assets: a clear block keeps its colour ...`, `d386009`, and `test: an HD texture pack loads as the
+   stock art, on Linux`, `4c5d3a1`. Picked from `hd-texture-packs`. Done.
+3. `nui 1.5.0: ...` (step 3: PadHook revision 3, its tests, the docs, the `l_screen` comment, the
+   release), `50d18a6`. Done.
 
-Chronicle, on the same branch name:
+Chronicle, on the same branch names:
 
 1. `nui 1.4.2: ...` (the sync, `_chronicle.dll` 2.1.3), `1fd1bb6`. Done.
 2. `pad: ...` (step 2), `8591a96`. Done.
 3. The rebase onto Chronicle 2.1.1 (§4b). Done.
-4. `nui 1.5.0: ...` (the sync, `_chronicle.dll` 2.1.4)
-5. `docs: ...` (step 4)
+4. `nui 1.5.0: ...` (the sync, `_chronicle.dll` 2.1.4), `c8ac1c6`. Done.
+5. `pad: //cr pad says why when the game is not reading XInput`, `dec423c`. Done.
+6. `docs: ...` (step 4). Done.
 
 ### Old and new hashes after the rebase
 
@@ -468,3 +500,7 @@ cannot change them without rewriting the messages, so this table is the key.
 3. The open checks in `docs/controller-handoff.md` §6.
 4. At UI Scale 1.5, clicks, drags and resizes land where the cursor is.
 5. Mouse and keyboard still work while the pad is held and after it is given back.
+6. `//cr status`: the cache line names `chronicle 2.1.4`. With the 1.2.10 addon loaded, Chronicle still
+   draws its window body and the HD art at login.
+7. With Enable XInput off in the FFXI Config: `//cr pad` says so, and does not take the pad.
+8. On Windows, from nui: `sh test/build_pad_test.sh --self-test` and `sh test/build_render_test.sh`.

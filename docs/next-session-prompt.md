@@ -1,5 +1,9 @@
 # Handoff: the remaining controller and HD texture work
 
+> Done, 2026-11-26: the session this prompt started built sections 4.1 to 4.3, on the branch
+> `ccr-d3a8994b-5t63ba` in both repositories. `docs/controller-handoff.md` has the state now. The items
+> in section 4.4 still wait on the user.
+
 Paste everything below the line into a new session that has `toboshii/ffxi-chronicle` and `toboshii/nui`
 attached.
 
