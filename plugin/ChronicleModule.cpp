@@ -16,7 +16,7 @@
 #include "host.hpp"
 
 namespace {
-nui::HostConfig const kConfig {"chronicle", "2.1.3"};
+nui::HostConfig const kConfig {"chronicle", "2.1.4"};
 }  // namespace
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID) {
