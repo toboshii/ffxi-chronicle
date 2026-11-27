@@ -37,6 +37,7 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 | both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded when they ask. On 2026-11-27 Chronicle's review branch and `ccr-d3a8994b-5t63ba` both went to `b24f027`. In nui all three branches are at `6b821c8`. Compare the heads before you rely on any of them. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `controller-pad-hook` | `79bb531` | The upstream PR for the pad hook, "Read and hold the controller the game reads", on upstream `main` `8b2e53c`. Four commits: revision 1, revision 2, the Linux tests, revision 3. It has no release commit, no HD work and no `l_screen` comment fix. It names PadHook revisions instead of the fork's release numbers, and its frozen layout is `test/frozen/layout_padhook.rev1.txt`. Open on `jintawk/nui`, waiting for review. |
+| `toboshii/nui` | `keyboard-key-hook` | `db02f6c` | The upstream PR for the key hook, "Keep single keys from the game", stacked on `controller-pad-hook` (`79bb531`): its first four commits are that PR. Two commits of its own: the hook with its docs and Windows tests (`f66b72c`), and the Linux suite (`db02f6c`). Like the pad PR, it names KeyHook revisions instead of the fork's release numbers, has no release commit, and freezes `test/frozen/layout_keyhook.rev1.txt`. Its hook sources and tests match nui `8820af0` byte for byte. The user opens it on `jintawk/nui`. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
 | both | `claude/controller-support-plan-yjc276` | Chronicle `867e46a`, nui `cf75bf8` | The branch before the rebase. Unchanged. `docs/test-findings-plan.md` §10 maps its hashes to the new ones. |
 
@@ -401,8 +402,9 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
    and auto-hide (§4). The QA frames matched at `d4417ad`. The user chose not to run them again after builds 4 to
    6, which change only Settings rows.
 7. **The keyboard hook: built and works in game** (§3, §4). A held arrow keeps turning the camera when K takes the
-   keys, until it is let go. The user chose to keep that rule. The keyboard hook could become a third upstream PR,
-   from its own branch, when the user asks.
+   keys, until it is let go. The user chose to keep that rule. The upstream PR branch is `keyboard-key-hook`, stacked
+   on `controller-pad-hook`. GitHub cannot stack a PR on a branch of the fork, so the upstream PR shows the pad
+   commits until the pad PR merges. If the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`.
 8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings and a main menu item. The
    research settled the input mask: it gates action categories, not keys (`docs/keyboard-hook-research.md` §1.6).
    The key bindings matter less now that the hook hides only Chronicle's keys, but the nav key can still clash with a
