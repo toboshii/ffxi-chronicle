@@ -1,177 +1,205 @@
-# Handoff: the keyboard driver, and the controller work after it
+# Prompt: a keyboard hook in nui, then the rest
 
-Paste everything below the line into a new session that has `toboshii/ffxi-chronicle` and `toboshii/nui`
-attached.
-
----
-
-You continue the work on two repositories: `toboshii/ffxi-chronicle` (Chronicle, a Windower 4 addon for
-Final Fantasy XI) and `toboshii/nui` (the drawing library that Chronicle vendors in `plugin/nui`). Both are
-forks of `jintawk/*`. The controller support is built, tested and confirmed in game, and its nui part is
-open as a pull request upstream. Your job is the next piece of work, a keyboard driver, and then the items
-after it in section 5.
+You continue the work on two repositories: `toboshii/ffxi-chronicle` (Chronicle, a Windower 4 addon for Final
+Fantasy XI) and `toboshii/nui` (the drawing library that Chronicle vendors in `plugin/nui`). Both are forks of
+`jintawk/*`. The controller support and the keyboard driver are built, tested and confirmed in game. Your first
+job is a keyboard hook in nui, so that Chronicle hides only its own keys from the game. After it, do the items in
+section 6.
 
 ## 1. Read these first, in this order
 
 1. `docs/controller-handoff.md` (Chronicle). It is the current state: branches, commits, the architecture,
-   every test result, how to work in the container and on the user's Windows machine, and what is left.
-2. `docs/controller-support.md` (Chronicle). §4 is the navigation model, which is input-agnostic. §6 Phase 1
-   is the keyboard driver as first planned.
-3. `docs/test-findings-plan.md` §7 (Chronicle). It is the list of next work, with the keyboard driver first.
-4. In Chronicle's code: the "Events" section and the "The controller" section of `chronicle.lua`, the
-   keyboard and controller sections of `ui/window.lua`, `ui/keys.lua`, `ui/nav.lua` and `ui/pad.lua`.
+   every test result, how to work in the container and on the user's Windows machine, and what is left. Read §3
+   (the keyboard driver and the pad hook), §4 and §7 closely.
+2. `docs/controller-support.md` (Chronicle): §3 is the research on how the game reads its input, and §4 is the
+   navigation model.
+3. `docs/test-findings-plan.md` §5 (Chronicle). It is the design of PadHook revision 3, the closest model for a
+   keyboard hook: a signature in `FFXiMain.dll`, one patched instruction, a shared bus, and fail-closed checks.
+4. In nui: `src/PadHook/PadHook.h`, `src/pad.cpp`, `src/host.cpp` (the Lua table), `abi.md`, and the Linux tests
+   in `test/pad_linux/`.
+5. In Chronicle's `chronicle.lua`: the "The keyboard" section (`kbd`, `kbd_down`, `kbd_block`, `kbd_want_block`,
+   `kbd_set_block`) and the `keyboard` event.
 
 ## 2. Where things stand
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| Chronicle | `ccr-d3a8994b-5t63ba` | the commit that adds this prompt | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
-| nui | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3 (fork releases 1.3.0 to 1.5.0), the HD texture pack work. On upstream `main` `8b2e53c`. |
-| both | `claude/chronicle-workstreams-review-dp0k36` | as `ccr-d3a8994b-5t63ba` when last fast-forwarded | The review branch. The user has it fast-forwarded to `ccr-d3a8994b-5t63ba` when they ask. |
+| Chronicle | `ccr-bfbc0043-hhlj8v`, `ccr-d3a8994b-5t63ba`, `claude/chronicle-workstreams-review-dp0k36` | the commit that adds this prompt (on `ccr-bfbc0043-hhlj8v`). The other two are at `b24f027`, one commit behind. | The controller, the keyboard driver, the choosable nav key and controller chord, auto-hide, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d`. |
+| nui | the same three branches | `6b821c8` | PadHook revisions 1 to 3 (fork releases 1.3.0 to 1.5.0) and the HD texture pack work. On upstream `main` `8b2e53c`. |
 | nui | `controller-pad-hook` | `79bb531` | Open PR on `jintawk/nui`: "Read and hold the controller the game reads". |
 | nui | `hd-texture-packs` | `871a167` | Open PR on `jintawk/nui`: "Read the UI art from an HD texture pack". |
 
-Continue on `ccr-d3a8994b-5t63ba` in both repositories. If your session assigns a different branch, create
-it from that head. Do not change `controller-pad-hook` or `hd-texture-packs` unless the user asks.
-
-The keyboard driver needs no nui change: it is Lua only, in Chronicle.
+Continue from `ccr-bfbc0043-hhlj8v`'s head in both repositories. If your session assigns a different branch,
+create it from that head. Do not change `controller-pad-hook` or `hd-texture-packs` unless the user asks.
 
 ## 3. Rules for this work
 
 - Commit as `Toboshii Nakama <toboshii@gmail.com>`. Set `user.name` and `user.email` in both repositories
-  first. Add no `Co-Authored-By` or session lines to commits, and no attribution or session links to PR
-  text.
+  first. Add no `Co-Authored-By` or session lines to commits, and no attribution or session links to PR text.
 - Use the `ste80-humanizer` skill for all text a person reads: commit messages, docs, PR descriptions and
-  the prompts you write. Run its checker (`scripts/ste_check.py`) on docs and PR text. Write short sentences
-  in the active voice, with no em dashes and no semicolons in prose.
-- Commit subjects are "area: a plain sentence" (`pad:`, `keys:`, `docs:`, `test:`). Wrapped bodies say why.
+  prompts. Run its checker (`scripts/ste_check.py`) on docs and PR text. Write short sentences in the active
+  voice, with no em dashes and no semicolons in prose.
+- Commit subjects are "area: a plain sentence" (`keys:`, `pad:`, `docs:`, `test:`). Wrapped bodies say why.
 - A nui release is one commit named `nui x.y.z: ...` with the code, `VERSION`, `RELEASES` and
   `src/nui_version.h`. A Chronicle sync is one commit named `nui x.y.z: ...` with the vendored copy and the
-  rebuilt DLL. You should not need either for the keyboard driver.
-- Frozen layouts: add new bus fields only in the reserved tails, and zero must mean the old behaviour.
-  `python3 test/frozen_check.py` must pass.
-- Never push to nui `main` or Chronicle `master`. Open no PR unless the user asks. An upstream PR branch
-  has no `claude/` or `agent/` prefix, names its purpose, and carries no plans or handoffs (`docs/`).
-- Rewrite pushed history only with the user's permission, and then with `--force-with-lease` on the exact
-  old head.
+  rebuilt DLL.
+- Frozen layouts: a new bus gets its own frozen layout from its first release. Add new fields to any bus only in
+  its reserved tail, and zero must mean the old behaviour. `python3 test/frozen_check.py` must pass.
+- Never push to nui `main` or Chronicle `master`. Open no PR unless the user asks. An upstream PR branch has no
+  `claude/` or `agent/` prefix, names its purpose, and carries no plans or handoffs (`docs/`).
+- Rewrite pushed history only with the user's permission, and then with `--force-with-lease` on the exact old head.
 - Do not put model names in commits, docs or PR text.
+- The user likes work they can test in game: give a test zip and a short checklist for each build.
 
-## 4. The work: a keyboard driver (Phase 1 of the plan, decision D5)
+## 4. The work: a keyboard hook in nui
 
-### What it is for
+### Why
 
-A player drives Chronicle's cursor from the keyboard, the way the controller drives it now. That also
-covers players whose pad Steam Input, DS4Windows or reWASD maps to keys. It needs no native code.
+Chronicle's keyboard driver has to keep the keys it uses from the game. In game, a `true` return from
+Windower's `keyboard` event keeps no key from the game. A tap of an arrow turns the camera, and Page Up and Page
+Down zoom it. A letter typed in Chronicle's search box opens the game's menu for that letter. So Chronicle sends
+Windower's `keyboard_blockinput 1` while it holds the keys or the search box has focus, and `0` after. That works,
+and the user tested it. It has three costs:
 
-### What already exists
+1. No key reaches the game, so the player cannot chat, use a macro or press an F-key in nav mode.
+2. Windower runs no bind under the block. That is why the nav key is Chronicle's own setting.
+3. The block is global Windower state. Another addon, or the player, may use it too.
 
-- **The keyboard event.** `windower.register_event('keyboard', function(dik, down, flags, blocked) ... end)`
-  in `chronicle.lua` ("Events" section). If the handler returns `true`, the game does not get the key. Today it calls
-  `win:key(dik, down, ch)`, and only while the module draws (`nui.drawing`), apart from key-ups.
-- **The search box rule (review UI-4).** `W:key` in `ui/window.lua` takes every key pressed while the search
-  box has focus. It swallows a key-up only if it swallowed that key's key-down. So the game gets the
-  release of a key that the player held before the box took focus. A key that the box took stays
-  swallowed until its release, even after the box loses focus. Keep the same rule for the driver.
-- **Key codes.** `ui/keys.lua` turns DirectInput codes into characters and tracks each Shift key on its
-  own (review UI-7). `keys.reset()` runs on lose focus and gain focus.
-- **The cursor, which is input-agnostic.** In `ui/window.lua`: `W:pad_enter(hint)`, `W:pad_leave()`,
-  `W:pad_move(dir)`, `W:pad_activate()`, `W:pad_back()` (returns `'root'` with nowhere to go back to),
-  `W:pad_click(hit)`, `W:pad_scroll(dy, absolute)`. `ui/nav.lua` does the spatial moves. The hover is the
-  cursor, so the existing hover drawing shows it. A mouse move of more than 3 px gives the hover back to
-  the mouse.
-- **The controller's own flow**, to mirror. In `chronicle.lua`: `pad_take`, `pad_give`, `pad_act` and
-  `pad_tick`, and `//cr pad [on|off|status]`. `pad_act` maps an action name to the window calls above.
+A hook that hides only Chronicle's keys (the nav keys, the nav key itself, and the search box's keys while it has
+focus) removes all three.
 
-### What the plan asked for
+### What is known
 
-`docs/controller-support.md` §6 Phase 1: in a nav mode, the arrows, Enter, Backspace, Tab and PgUp/PgDn
-drive the cursor. The `keyboard` event keeps those keys from the game, with the same key-up rules as the
-search box. DirectInput codes, for reference: Up `0xC8`, Down `0xD0`, Left `0xCB`, Right `0xCD`, Enter
-`0x1C`, Backspace `0x0E`, Tab `0x0F`, Page Up `0xC9`, Page Down `0xD1`, Escape `0x01`, Home `0xC7`, End `0xCF`.
+- Windower 4 wraps DirectInput8, and the game reads the keyboard through DirectInput8. Windower 4's core is
+  closed source. Fenestra, its open successor, wraps the DirectInput keyboard device, and its source may show
+  how such a wrapper works.
+- Windower's `keyboard` event still fires under `keyboard_blockinput 1`, and a bind keeps its key from the game.
+  So Windower sees the keys before the game does.
+- PadHook revision 3 hooks the game's own XInput wrapper in `FFXiMain.dll`, found by a 44-byte signature, and
+  changes one instruction there. That pattern worked on every client build tried, and it chains through
+  whatever the game calls.
+- The test reports name `FUN_10124b70`, which writes the game's input mask from sixteen places, and
+  `Input_GetAxisValueMerged`. They may matter for the keyboard too.
+- Nobody knows yet whether the game reads the keyboard with `GetDeviceState` (a 256-byte array), with
+  `GetDeviceData` (buffered events), or both. A tap moved the camera, so the game also acts on a key's press.
 
-### Facts from the test reports that bear on it
+### Phase 0: research, then decide with the user
 
-- In the stock English menu bindings, D, G, K and O are free. A key or chord that enters and leaves nav
-  mode could use one of them.
-- The keyboard bindings with ids 74 to 137 are not in the registry or in `cnf.dat`. They exist only in
-  memory, and reading them needs native code. The retail client may offer no keyboard remapping at all.
-  Nobody checked that in the game's menus yet. If it offers none, a fixed table of the stock bindings is
-  enough to avoid a clash.
+Answer these before you write hook code. The cloud container has no copy of the client. Do the research on the
+user's Windows machine ("Lego"), through its "Remote control" session (§5). Use the plain copy of `FFXiMain.dll`
+there and the 32-bit MSYS2 tools (`objdump`). Ask that session to check with the user before it
+installs anything new, such as a disassembler.
 
-### Decide with the user before you build
+1. How does `FFXiMain.dll` get its keyboard device? Find the `DirectInput8Create` import or `GetProcAddress`, the
+   `CreateDevice` call with `GUID_SysKeyboard`, and where the game keeps the device pointer.
+2. Where does the game read it? Find the calls through the device's vtable at `GetDeviceState` (offset `0x24`) and
+   `GetDeviceData` (offset `0x28`) for that device. Which one, or both, how often, and from which thread?
+3. Is there one small wrapper or call site, like the XInput wrapper, that a signature can find and one instruction
+   can redirect? Give its bytes for the 2026-11-02 build, and a signature with its wildcards.
+4. With Windower loaded, is the device the game calls Windower's wrapper object? A hook at the game's call site
+   would then sit after Windower. Windower's events and binds would keep working, because Windower has already
+   seen the key.
+5. Does `FUN_10124b70`'s input mask offer a simpler, sanctioned way to stop the game acting on a key?
 
-Use the `AskUserQuestion` tool. Recommend an option for each:
+Write the answers into a short research note in Chronicle's `docs/` (force-added). Then use the `AskUserQuestion`
+tool to agree on these, with a recommendation for each:
+- **Where to hook:** the game's call site (recommended if question 3 finds one), the device vtable filtered by
+  `this`, or the input mask.
+- **Which keys to hide:** the nav keys while nav mode holds them, and the nav key itself. While the search box has
+  focus: every key, or only the keys it types.
+- **What Chronicle does when nui refuses the hook, or the DLL has none:** fall back to `keyboard_blockinput` (recommended), or no
+  blocking at all.
 
-1. How nav mode starts and ends: `//cr nav` (which the player can bind to a key with Windower's `bind`), a
-   key or chord in Chronicle itself, or both. If a key, which one.
-2. One mode or two: do `//cr pad`, `L3 + R3` and the keyboard share one cursor mode, or does each input get
-   its own?
-3. Which keys nav mode takes from the game. Does Escape give the keyboard back, as Cancel gives the pad back
-   at the root?
-4. A Settings row for it, and its default.
+### Phase 1: build it in nui
 
-### Rules the driver must keep
+Model it on PadHook. A likely shape, to confirm against the research:
+- **A shared bus**, `Local\FFXiKeyHook_v1_<pid>`, built the way PadHook's is. There is one patch per process,
+  and the live module with the highest revision drives. The thunks are in a block that nui never frees. With
+  nobody driving, the thunks pass every call through.
+- **Per-client masks** of DirectInput key codes to hide (256 bits), set from Lua, with a heartbeat. A hold that
+  Lua does not renew within 250 ms lapses, so a stalled or crashed Lua never leaves keys hidden.
+- **The press rules in native code,** as for the pad:
+  - A key the game already saw go down stays the game's until its release.
+  - A key hidden at its press stays hidden until its release, even after Lua stops hiding it.
+  - For `GetDeviceState`, clear the hidden keys' bytes. For `GetDeviceData`, drop or rewrite the hidden keys'
+    events, with care for the buffer count.
+- **Fail-closed checks:** exactly one signature match, the expected bytes, a writable slot. Otherwise
+  patch nothing and say why in the status.
+- **A Lua API** in `host.cpp`'s table, for example `key_start()`, `key_hide(list of codes or a mask string)` (also
+  the heartbeat), `key_status()` and `key_stop()`, with `stop()` and `host_detach` releasing it.
+- **A frozen layout** for the new bus from its first release (`test/layout_keyhook.txt` and
+  `test/frozen/layout_keyhook.<version>.txt`).
+- **Tests:** a Linux stand-in like `test/pad_linux`, for the logic and the patch on 32-bit Linux. Also a Windows
+  test against stand-ins for the device and the game's call site, with fault builds, run on Lego.
+- **A nui release**, for example 1.6.0, then the Chronicle sync with a rebuilt `_chronicle.dll` (for example
+  2.1.5). Check the DLL with `python3 sync.py check --dll ../ffxi-chronicle/libs/_chronicle.dll` from nui.
 
-- When nav mode starts, a key that the player holds then stays the game's until the player lets it go.
-- When nav mode ends, a key that nav mode took stays away from the game until the player lets it go. The
-  game never sees half a press.
-- The focused search box comes first, as now.
-- Nav mode ends on the same events that give the pad back: hide, logout, unload, lose focus, and the
-  command.
-- With nav mode off, every frame stays exactly as it is now. Check that with the QA comparison below.
+### Phase 2: use it in Chronicle
 
-### Tests
+- When `key_start` succeeds, `kbd_block` hides only the keys it wants through the hook, and sends no
+  `keyboard_blockinput`. When nui refuses the hook, or the DLL has none, it falls back to `keyboard_blockinput` as now.
+- Chat, macros and Windower binds then work in nav mode. Decide with the user whether the chat-open rule and the
+  Ctrl or Alt rule stay as they are.
+- `//cr nav status`, or a line in `//cr status`, says how Chronicle keeps the keys: the hook, or the block, and why.
+- `test/test_keys.lua` keeps its BLOCK-* checks for the fallback, and gains named checks for the hook path. The
+  fake DLL in `test/harness.lua` needs the new functions. Each new rule's check must fail on the code without it.
+- The README's "With a keyboard" section says what changes for the player: chat, macros and binds work in nav
+  mode, and a bind for `//cr nav` can end it again.
 
-- Lua, in the harness (`test/harness.lua`). `env.fire('keyboard', dik, down, 0, false)` returns `true` when
-  Chronicle keeps the key. `test/test_input.lua` already tests UI-4 this way. Name each rule's check, and
-  make sure each fails on the code without it.
-- The nine CI suites and `test/syntax_check.lua` (`.github/workflows/tests.yml`) must still pass.
-  `test_screens` has 4 known Linux-only failures.
-- The QA frames: on the user's Windows machine, draw the same `qa_render.lua` shots from the old and the new
-  Chronicle tree. Then compare the raw frames byte for byte. `docs/controller-handoff.md` §4 says how the
-  last comparison ran: `CR_QA_PAGES_FILE`, `CR_QA_SCREENS=1` and a sample of pages with no pictures. With
-  nav mode off, every frame must match, apart from any new Settings row.
-- In game: the user runs it. Make a test zip as in section 6, and list what to check.
+### Tests and verification
 
-### Docs
+- nui: the new Linux test, `python3 test/frozen_check.py` and its `--self-test`, the existing pad and HD Linux
+  tests, and `NUI_GXX=i686-w64-mingw32-g++ sh example/build.sh`. On Lego: the new Windows test with its fault
+  builds, the existing pad test, and `test/hook_test.exe`.
+- Chronicle: the CI suites in `.github/workflows/tests.yml` (`test_doc`, `test_input`, `test_keys`, `test_chord`,
+  `test_autohide`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`,
+  `test_progress_lists`, `test_pages`), plus `test_pad` and `test/syntax_check.lua`. `test_screens` has 4 known
+  Linux-only failures and takes over 10 minutes, so run it in the background.
+- The QA frames, if the drawing changes. The handoff §4 says how the last comparison ran on Lego.
+- In game: a test zip and a checklist. Check at least these:
+  - In nav mode, the arrows, Page Up and Page Down do not move the camera.
+  - In nav mode, the player can open the chat line with a key Chronicle does not use, and type.
+  - In nav mode, a macro key and a Windower bind work.
+  - A letter typed in the search box opens no game menu.
+  - The game gets the keys back when the player gives them back, switches window, or unloads the addon.
 
-- Chronicle README: a "With a keyboard" section next to "With a controller", and the commands table.
-- `docs/controller-support.md`: the Status header, Phase 1 marked as built.
-- `docs/controller-handoff.md`: the commits, the verification table, and what is left.
-
-## 5. After the keyboard driver
-
-In rough order. `docs/controller-handoff.md` §6 has the detail.
-
-1. **The two nui PRs.** Whichever merges second needs a rebase onto upstream `main`, because both add a CI
-   step and a README paragraph in the same place. Do it when the user asks.
-2. **After both merge:** Chronicle vendors an upstream nui release, and the fork's release numbers give way.
-   Agree on that with the user. Then a Chronicle PR, only when the user asks.
-3. **The player's own key bindings,** the game's input mask, and a main menu item
-   (`docs/test-findings-plan.md` §7). Each needs research first, and some need native code.
-4. **Optional:** DirectInput pads, QA frames for controller mode, moving and resizing the window from the
-   pad, and the small loose ends in the handoff's §6.
-
-## 6. Working in the container
+## 5. Working here and on Lego
 
 - Install the toolchain first: `apt-get update`, then `apt-get install -y g++-mingw-w64-i686 lua5.1
-  g++-multilib`. Wine does not start in this container. Do not spend time on it.
-- Lua tests: `export TEMP=<scratch dir>`, then `lua5.1 test/<name>.lua` from the Chronicle root. Delete the
-  file named `nul` that the harness leaves, and never commit it.
-- Build the DLL with `sh plugin/build.sh` from the Chronicle root, if a change ever needs it. Check it with
-  `python3 sync.py check --dll ../ffxi-chronicle/libs/_chronicle.dll` from nui. Compare the `NUI-TAG`
-  string and the git blobs, never the bytes.
+  g++-multilib`. Wine does not start in the container. Do not spend time on it.
+- Lua tests: `export TEMP=<scratch dir>`, then `lua5.1 test/<name>.lua` from the Chronicle root. Delete the file
+  named `nul` that the harness leaves, and never commit it.
+- Build the DLL with `sh plugin/build.sh` from the Chronicle root. Compare the `NUI-TAG` string and the git
+  blobs, never the bytes.
 - `sync.py` resolves consumer paths from the directory above the nui checkout's parent. Add
   `user/ffxi-chronicle/plugin/nui` to `consumers.txt`, run `python3 sync.py release <v>` or `sync`, then
   `git checkout consumers.txt`. Never commit that line.
-- Push nui with `git -c push.negotiate=true push`. The proxy refuses branch deletes with a 403. Report that
-  to the user instead of trying again.
+- Push nui with `git -c push.negotiate=true push`. The proxy refuses branch deletes with a 403. Report that to the
+  user instead of trying again.
 - Chronicle's `docs/` is in `.gitignore`, so add files there with `git add -f`.
-- A test zip: `git archive --format=zip --prefix=chronicle/ -o <zip> HEAD` from the Chronicle root. Send it
-  to the user with `SendUserFile`.
-- The session cannot reach `jintawk/nui` or `jintawk/ffxi-chronicle`. The user opens upstream PRs. Give
-  them the compare URL and the description as a file.
-- Windows runs: the user's Windows machine ("Lego") runs a Claude Code session named "Remote control". Find
-  it with `list_sessions` and message it with `send_message`. The user may need to allow this session to
-  reach their own computers first, and the refusal tells you how. Ask that session to confirm with the
-  user before it installs anything. Its setup is in `docs/controller-handoff.md` §5.
+- A test zip: `git archive --format=zip --prefix=chronicle/ -o <zip> HEAD` from the Chronicle root. Send it to the
+  user with `SendUserFile`.
+- The session cannot reach `jintawk/nui` or `jintawk/ffxi-chronicle`. The user opens upstream PRs. Give them the
+  compare URL and the description as a file.
+- Lego runs a Claude Code session named "Remote control". Find it with `list_sessions` and message it with
+  `send_message`. The user may need to allow your session to reach their computers first. The refusal tells you
+  how. That session can build and run the Windows tests, draw the QA frames, read the client's code, and install a
+  test build into `C:\Windower4\addons\chronicle` (it backs up the old one first). Its setup is in the handoff §5.
+- You may hand a well-scoped piece to a sub-agent, as the last session did for the controller chord and for
+  auto-hide. Brief it fully, have it commit locally without pushing, and review and rerun its tests before you
+  push.
+
+## 6. After the keyboard hook
+
+In rough order. The handoff §6 has the detail.
+
+1. **The two nui PRs.** Whichever merges second needs a rebase onto upstream `main`, because both add a CI step
+   and a README paragraph in the same place. Do it when the user asks. The keyboard hook could become a third PR
+   later, from its own branch.
+2. **After both merge:** Chronicle vendors an upstream nui release, and the fork's release numbers give way.
+   Agree on that with the user. Then a Chronicle PR, only when the user asks.
+3. **The player's own key bindings** and **a main menu item** (`docs/test-findings-plan.md` §7). Each needs
+   research first, and some need native code. The bindings matter less once the hook hides only Chronicle's keys,
+   but the nav key can still clash with a key the player bound in the game.
+4. **Optional:** DirectInput pads (a second PadHook source), QA frames for controller mode, moving and resizing
+   the window from the pad, and the small loose ends in the handoff's §6.

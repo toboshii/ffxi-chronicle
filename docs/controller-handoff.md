@@ -20,16 +20,18 @@ texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`).
 Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
 frame comparison on Lego finds only the new Settings row (§4). The player can now choose the controller chord
 (`1954955`, §3), and Cancel at the root can hide the window (`cffc161`, auto-hide, §3). Both work in game, by the
-user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`).
+user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). The keyboard driver keeps keys from the
+game with Windower's `keyboard_blockinput`, which blocks the whole keyboard, and Windower's binds with it. The next
+piece of work is a keyboard hook in nui that hides only the keys Chronicle uses (§6, `docs/next-session-prompt.md`).
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `ccr-bfbc0043-hhlj8v` | Chronicle: this document's commit. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver. nui is unchanged. |
-| `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `36a7467` | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
+| both | `ccr-bfbc0043-hhlj8v` | Chronicle: this document's commit. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
+| `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `b24f027` (fast-forwarded on 2026-11-27) | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the keyboard work, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
-| both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded to `ccr-d3a8994b-5t63ba` in both repositories when they ask, last on 2026-11-27. Compare the two heads before you rely on either. |
+| both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded when they ask. On 2026-11-27 Chronicle's review branch and `ccr-d3a8994b-5t63ba` both went to `b24f027`. In nui all three branches are at `6b821c8`. Compare the heads before you rely on any of them. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `controller-pad-hook` | `79bb531` | The upstream PR for the pad hook, "Read and hold the controller the game reads", on upstream `main` `8b2e53c`. Four commits: revision 1, revision 2, the Linux tests, revision 3. It has no release commit, no HD work and no `l_screen` comment fix. It names PadHook revisions instead of the fork's release numbers, and its frozen layout is `test/frozen/layout_padhook.rev1.txt`. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
@@ -65,7 +67,9 @@ Chronicle commits on the branch after test build 1:
 | `1954955` | pad: the player chooses the controller chord |
 | `30f58e7` | docs: the choosable controller chord |
 | `cffc161` | ui: Cancel at the root can hide the window (auto-hide) |
-| this commit | docs: auto-hide |
+| `acad148` | docs: auto-hide |
+| `b24f027` | docs: builds 4 to 6 work in game |
+| this commit | docs: the handoff and the prompt for the nui keyboard hook |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, atlas format **4**.
@@ -336,24 +340,37 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
    can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
    prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **The keyboard driver: built** (`d4417ad`). The QA frame comparison passed (§4). Build 1's in-game test
-   found that Windower does not block a single key, and build 2 (`5a47e40`) blocks the whole keyboard. Left: the
-   in-game test of build 2, and a QA run at `5a47e40` if wanted (its drawing code did not change). Later, a native
-   keyboard hook in nui could hide only the nav keys, so chat and macros keep working. After it, from
-   `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and a main menu
-   item. The key bindings matter more now: the driver uses fixed keys, and it cannot see a binding
-   the player made in the game.
-7. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
+6. **The keyboard driver: built and works in game**, with the choosable nav key, the choosable controller chord
+   and auto-hide (§4). The QA frames matched at `d4417ad`. The user chose not to run them again after builds 4 to
+   6, which change only Settings rows.
+7. **Next: a keyboard hook in nui.** `docs/next-session-prompt.md` is the brief. Today Chronicle keeps keys from
+   the game with `keyboard_blockinput 1`. That blocks every key, so the player cannot chat or use a macro in nav
+   mode, and Windower runs no bind. A hook that hides only the keys Chronicle uses fixes all three. It needs
+   research first: how the game reads the keyboard through Windower's DirectInput8 wrapper.
+8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and
+   a main menu item. The key bindings matter less once the hook hides only Chronicle's keys, but the nav key
+   can still clash with a key the player bound in the game.
+9. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
    resizing the window from the pad.
-8. **Small loose ends:**
+10. **Small loose ends:**
    - With Enable XInput off, the first field of the controller line in `//cr status` still reads "ready
-     (L3+R3)". `//cr pad` gives the right message, so this is cosmetic.
+     (L3+R3)", or the chosen chord. `//cr pad` gives the right message, so this is cosmetic.
    - nui's `example/README.md` says a straight copy of `FFXiMain.dll` will not do as `NUI_FFXI_COPY`. A plain
      copy works for the 2026-11-02 client.
    - The `l_screen` comment fix in `src/host.cpp` is only in the fork's 1.5.0, not in either pull request.
    - `claude/hd-texture-packs` is stale. The user deletes it, because the proxy refuses branch deletes.
+   - `test_pad` is not in Chronicle's CI loop. `test_keys`, `test_chord` and `test_autohide` are.
+   - The README's keyboard section has one 24-word instruction sentence that the style checker flags.
 
 ## 7. Facts from the research worth keeping
+
+Found in game on 2026-11-27, with test builds 1 to 3 of the keyboard driver:
+- A `true` return from Windower's `keyboard` event keeps no key from the game. A tap of an arrow turns the camera,
+  and Page Up and Page Down zoom it. A letter typed in the search box opens the game's menu for it.
+- `keyboard_blockinput 1` keeps every key from the game, and the `keyboard` event still sees each key.
+- A Windower `bind` keeps its own key from the game. Under `keyboard_blockinput 1`, Windower runs no bind.
+- Home and End do nothing in the game with the stock bindings.
+
 
 Sourced in `docs/controller-support.md` §3.
 

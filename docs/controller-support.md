@@ -3,7 +3,9 @@
 Status, 2026-11-27: **implemented**, on `ccr-d3a8994b-5t63ba` and `ccr-bfbc0043-hhlj8v` in both repositories. It
 ran in game on nui 1.3.0, where navigation and taking the pad worked. Test build 2 (nui 1.5.0, `_chronicle.dll`
 2.1.4) works in game too, by the user's report of 2026-11-27, on the machine where the first build's hook
-refused. The keyboard driver (Phase 1) is built and passes its tests here. Nobody tried it in game yet. `docs/controller-handoff.md` has the state of the work, and
+refused. The keyboard driver (Phase 1) is built and works in game. It keeps keys from the game with Windower's
+`keyboard_blockinput`, which blocks the whole keyboard. A keyboard hook in nui, to hide only Chronicle's keys, is
+next (`docs/next-session-prompt.md`). `docs/controller-handoff.md` has the state of the work, and
 `docs/test-findings-plan.md` has the fixes from the two test reports.
 
 Decisions taken:
