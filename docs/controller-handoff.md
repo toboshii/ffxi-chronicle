@@ -56,6 +56,7 @@ Chronicle commits on the branch after test build 1:
 | `dec423c` | pad: `//cr pad` says why when the game is not reading XInput |
 | `9756f36` | docs: step 4 |
 | `d4417ad` | keys: K drives the cursor from the keyboard (on `ccr-bfbc0043-hhlj8v`) |
+| `5a47e40` | keys: keep the whole keyboard from the game while Chronicle holds it (test build 2 of the keyboard) |
 | this commit | docs: the keyboard driver |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
@@ -167,6 +168,15 @@ The keyboard driver (`d4417ad`) does this:
   elsewhere never sends its key-up.
 - **What is never taken:** a new press while the chat line is open (`get_info().chat_open`), with Ctrl or Alt held,
   or while the module does not draw (review LIFE-4). The focused search box comes first.
+- **Keeping keys from the game (`5a47e40`).** In game, on 2026-11-27, returning `true` from the `keyboard` event
+  kept no key from the game. The arrows turned the camera even on a tap, and Page Up and Page Down zoomed it. Home
+  and End do nothing in the game. Letters typed in the search box opened the game's menus, so the search box had
+  this bug before the driver too. Two things did keep keys from the game: `keyboard_blockinput 1` (all keys), and
+  a Windower bind (its key only). Under `keyboard_blockinput 1` the `keyboard` event still fires, and the cursor
+  moves. The user chose the whole-keyboard block, because Chronicle cannot read or restore a player's own binds.
+  `kbd_block` turns it on while the keys are held or the search box has focus, on a window that draws. It
+  changes only while no key is down (`kbd.down`, `kbd.ndown`). It waits at most 0.5 s to start
+  (`BLOCK_WAIT_ON`) and 2 s to end (`BLOCK_WAIT_OFF`). Losing focus and unloading lift it at once.
 - **Repeat:** a held arrow repeats on Chronicle's own clock, with the pad's delay and rate. Windower's repeated
   key-downs, if any, move nothing.
 
@@ -181,9 +191,10 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | In game: navigation, taking and giving back the pad | **Works**, by the user's report (nui 1.3.0 build) |
 | In game, test build 2 (`_chronicle.dll` 2.1.4, nui 1.5.0), on the machine where route 0 refused | **Works**, by the user's report of 2026-11-27. `//cr pad status` says `live at FFXiMain's XInput wrapper`, at a different address on each launch (the client module moves, and the signature finds it). With Enable XInput off, it adds that the client has not loaded `xinputdll.dll` yet, and `//cr pad` says so. With a controller, `reads` goes up and the controller works. L3 + R3 takes the pad without sitting the player or moving the camera. An L3 tap still sits, and R3 held still changes the view. A pad plugged in after the start still works. The mouse lands right at UI Scale 1.5. The HD art draws at login with an addon on nui 1.2.10 loaded. |
 | Chronicle `test/test_pad.lua` | 100 passed, 0 failed (also at `d4417ad`) |
-| Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 90 passed, 0 failed. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
+| Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 112 passed, 0 failed at `5a47e40` (90 at `d4417ad`). Build 2 adds BLOCK-0 to BLOCK-11, one per rule of the block, and each fails without its rule. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
 | Chronicle `test/qa_render.lua`, `36a7467` against `d4417ad` (the keyboard driver) | **Only the Settings shots differ**, on 2026-11-27 on Lego, with the same inputs and the same 12-page sample as the run below. Both trees drew 220 shots (660 raw frames). 654 of 660 frames are identical. The 6 that differ are `settings.*.full` and `.content`, inside y 270 to 357. There the new row "Keyboard (K)" sits at y 270, and "Place and size" moves from y 270 to 304. In the manifests, only the 3 Settings shots differ: `content_h` goes from 280 to 314, and the Settings text has 2 more entries. Both trees hold the same `_chronicle.dll` (`NUI-TAG:1.5.0:0452179ed6c4`). |
-| In game: the keyboard driver | Not tried yet. The test zip is `chronicle-keys-test1.zip`, from `d4417ad`. |
+| In game: the keyboard driver, build 1 (`d4417ad`) | K takes and gives back the keys, and the cursor moves. **But the game still got every key**, as above. |
+| In game: the keyboard driver, build 2 (`5a47e40`) | Not tried yet. The test zip is `chronicle-keys-test2.zip`. |
 | Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
 | `test/test_screens.lua` (also at `d4417ad`) | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
 | `test_core`, `test_data`, `test_load`, `test_progress` | Not run here. They need a v1 worktree, the real DLL, or Windows. |
@@ -252,8 +263,10 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
    can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
    prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **The keyboard driver: built** (`d4417ad`). The QA frame comparison passed (§4). Left: the in-game
-   test with `chronicle-keys-test1.zip`. After it, from
+6. **The keyboard driver: built** (`d4417ad`). The QA frame comparison passed (§4). Build 1's in-game test
+   found that Windower does not block a single key, and build 2 (`5a47e40`) blocks the whole keyboard. Left: the
+   in-game test of build 2, and a QA run at `5a47e40` if wanted (its drawing code did not change). Later, a native
+   keyboard hook in nui could hide only the nav keys, so chat and macros keep working. After it, from
    `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and a main menu
    item. The key bindings matter more now: the driver uses fixed keys, and it cannot see a binding
    the player made in the game.
