@@ -1,12 +1,10 @@
-# Prompt: the keyboard hook in game, then the rest
+# Prompt: after the keyboard hook
 
 You continue the work on two repositories: `toboshii/ffxi-chronicle` (Chronicle, a Windower 4 addon for Final
 Fantasy XI) and `toboshii/nui` (the drawing library that Chronicle vendors in `plugin/nui`). Both are forks of
 `jintawk/*`. The controller support and the keyboard driver work in game. nui 1.6.0 adds a keyboard hook that hides
-only the keys Chronicle names, and Chronicle uses it. Its Linux and Windows tests pass, but nobody tried it in game
-yet.
-
-Your first job is the user's results from keyboard hook test build 1. After it, do the items in section 6.
+only the keys Chronicle names, and Chronicle uses it. Its tests pass, and it works in game. Your job is the items in
+section 6.
 
 ## 1. Read these first, in this order
 
@@ -52,31 +50,12 @@ create it from that head. Do not change `controller-pad-hook` or `hd-texture-pac
 - Do not put model names in commits, docs or PR text.
 - The user likes work they can test in game: give a test zip and a short checklist for each build.
 
-## 4. The work: keyboard hook test build 1 in game
+## 4. The work: section 6
 
-The user has the zip of Chronicle `9c0ab84` and a 14-step checklist (in the session's scratch folder, not in the
-repository). The checks are:
-- `//cr nav status` says `keys kept by nui's key hook: live at FFXiMain's keyboard reads ...` and `device Hook.dll`.
-- In nav mode, the arrows, Page Up and Page Down move only Chronicle's cursor, and Enter opens without opening the
-  chat line.
-- In nav mode, Space or `/` opens the chat line, the player can type, and Enter sends the line.
-- In nav mode, a Ctrl or Alt macro, an F key and a Windower bind (one for `//cr nav` too) work.
-- In the search box, a letter opens no game menu, and a space does not open the chat line.
-- A key held through K reaches the game whole. A switch to another window, or an unload, gives the game every key.
-
-What to do with the results:
-- **The hook refused in game.** `//cr nav status` gives the reason after `why:`. Lego checked the signatures
-  against the real image, so a refusal points at the run-time checks (alignment, the bytes at patch time) or at
-  another tool that patched the same place. Ask Lego to read the bytes at the two `cmp`s in the running game, but
-  only if the user agrees.
-- **A hidden key still acts in the game.** Learn which read let it through. `key_status()` has `reads`,
-  `events`, `hidden`, `dropped` and `ended`. The device must be `Hook.dll`. If it is not, Windower's wrapper is not
-  in front, and the research note needs a correction.
-- **The chat line opens from a hidden key** (most likely the nav key, if the player's client opens the chat line on
-  letters). The research note §2 says why. The fix is a message filter, which the handoff §6 item 10 describes. Ask
-  the user first.
-- **All checks pass.** Record it in the handoff §4. Then ask the user if the keyboard hook should become an
-  upstream PR on `jintawk/nui`, from its own branch with no `claude/` prefix and no `docs/` plans.
+Keyboard hook test build 1 works in game (the handoff §4). The user chose to keep one rule as it is. A nav key held
+when K takes the keys stays the game's until its release. So a held arrow keeps turning the camera until the player
+lets go of it. Do not change that unless the user asks. Start with section 6, and ask the user which item comes
+first.
 
 ## 5. Working here and on Lego
 

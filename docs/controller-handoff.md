@@ -23,8 +23,8 @@ frame comparison on Lego finds only the new Settings row (§4). The player can n
 user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). **The nui keyboard hook is built** (nui
 1.6.0, `dc45e56`, §3). It hides only the keys Chronicle names, after Windower's wrapper sees them, so chat, macros
 and binds work in nav mode. Chronicle uses it from `9c0ab84` (`_chronicle.dll` 2.1.5). The search box still blocks the
-whole keyboard, and so does nav mode when the hook is missing or refused. Its Linux and Windows tests pass. It is
-**not tested in game yet**: keyboard hook test build 1 went to the user on 2026-11-27 with a checklist (§4).
+whole keyboard, and so does nav mode when the hook is missing or refused. Its Linux and Windows tests pass, and
+**keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4).
 
 ## 2. Repositories, branches, commits
 
@@ -325,7 +325,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | nui `sh test/build_key_test.sh --self-test` (Windows, on Lego, `dc45e56`) | main 35/0, nomatch 6/0, all 6 faults caught. The run found one test bug: the STATUS check failed in every fault build, so a fault that changes nothing would also have counted as caught (fixed in `8820af0`, test only). Each fault was caught by its own checks as well. The pad suite (7 modes, 8 faults) and `hook_test.exe` (101/0) are unchanged. **At `8820af0`:** main 35/0, nomatch 6/0, all 6 faults caught by their own checks (NO_HEARTBEAT by KEY-13, TAKE_HELD by KEY-3 and KEY-15, LEAK_HELD by KEY-4 and R2, NO_EVENTS by KEY-2, KEY-4, KEY-5 and R2, NO_CMP by JOIN and LEAVE, NO_PRIME by KEY-15 and R2), and a build with no fault named `key_fault.exe` passes 35/0. |
 | Lego: the two signatures over the real 2026-11-02 image | One match each, in `.text`. Device offset `0x88`, 16 events asked, the `cmp`s at `0x10005A89` (8n+1) and `0x10005B20` (8n+0), each inside one aligned block. |
 | Chronicle `test/test_keys.lua` at `9c0ab84` | 179 passed. HOOK-0 to HOOK-17 cover the hook path, and the BLOCK checks the fallback (the fake DLL refuses the hook unless a test asks for it). 18 rules were removed in turn, and each made a named check fail. The CI suites, `test_pad` and `syntax_check` (3,115 files) pass. `test_screens`: 18,395 passed, the same 4 Linux failures. |
-| In game: keyboard hook test build 1 (`9c0ab84`) | **Not yet tested.** The zip and a 14-step checklist went to the user on 2026-11-27. |
+| In game: keyboard hook test build 1 (`9c0ab84`) | **Works**, by the user's report of 2026-11-27. Every check on the 14-step list passes but one, and that one was a test of the other order. The user held Down outside nav mode, so the camera was already turning, and then pressed K. The camera kept turning until Down was let go, and then Down moved Chronicle's cursor. That is the designed rule: a press the game saw stays the game's until its release, as the README says and as for the pad's buttons. The user chose to keep it (nui could give held nav keys to the game as released, as the pad hook centres the sticks, in a KeyHook revision 2). The checklist's own order (start in nav mode, hold Down, press K, let go) was not reported on. Passed: the hook is live with `device Hook.dll`, the arrows and Page Up/Down move only the cursor, Enter opens nothing in the game, Space and `/` open the chat line and Enter sends it, macros, F keys and a bind for `//cr nav` work, the search box opens no menu and no chat line, and switching window and unloading give the keys back. |
 | QA frames after builds 4 to 6 | Not run, by the user's choice. Builds 4 to 6 add Settings rows ("Keyboard key", "Controller buttons", "Hide on Back") and rename two ("Keyboard", "Controller"). So the Settings frames differ from the last comparison, and no other screen's drawing changed. |
 | In game: build 4 (`fb65dc1`), the choosable key | **Works**, by the user's report of 2026-11-27. Ctrl+N set from the Settings row takes and gives back the keys under the block, and Escape keeps the old key. `test_keys` has 139 checks, and each rule of the key was removed in turn and caught. |
 | In game: the keyboard driver, build 2 (`5a47e40`) and build 3 (`542afb6`, on a second machine) | **Works**, by the user's report of 2026-11-27. Every check passes: the arrows and Page Up/Down no longer move the camera, a letter typed in the search box opens no game menu, and the game gets its keys back as soon as Chronicle gives them back. One limit: under the block, Windower runs no bind, so a bind for `//cr nav` starts nav mode but cannot end it. K, and Escape or Backspace at the root, still end it. The README says so. |
@@ -400,10 +400,9 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 6. **The keyboard driver: built and works in game**, with the choosable nav key, the choosable controller chord
    and auto-hide (§4). The QA frames matched at `d4417ad`. The user chose not to run them again after builds 4 to
    6, which change only Settings rows.
-7. **The keyboard hook: built, not yet tested in game** (§3, §4). Next: the user's results from test build 1. If
-   `//cr nav status` says the hook is live, the checklist's points on Space, `/` and the search box show whether the
-   chat line ever opens from a hidden key. If nui refuses the hook in game, the `why:` part says which check failed.
-   Then the keyboard hook could become a third upstream PR, from its own branch, when the user asks.
+7. **The keyboard hook: built and works in game** (§3, §4). A held arrow keeps turning the camera when K takes the
+   keys, until it is let go. The user chose to keep that rule. The keyboard hook could become a third upstream PR,
+   from its own branch, when the user asks.
 8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings and a main menu item. The
    research settled the input mask: it gates action categories, not keys (`docs/keyboard-hook-research.md` §1.6).
    The key bindings matter less now that the hook hides only Chronicle's keys, but the nav key can still clash with a
