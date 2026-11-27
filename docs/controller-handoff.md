@@ -17,8 +17,8 @@ mouse fix. **Test build 2 works in game**, by the user's report of 2026-11-27, o
 hot patch refused: the hook reads through the client's wrapper, the chord no longer sits the player or turns
 the camera, and every check on the retest list passes. Two pull requests are open on `jintawk/nui`: the HD
 texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
-Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3) and passes its tests here. The
-QA frame comparison and the in-game test are next (§4, §6).
+Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
+frame comparison on Lego finds only the new Settings row (§4). The in-game test is next (§6).
 
 ## 2. Repositories, branches, commits
 
@@ -182,6 +182,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | In game, test build 2 (`_chronicle.dll` 2.1.4, nui 1.5.0), on the machine where route 0 refused | **Works**, by the user's report of 2026-11-27. `//cr pad status` says `live at FFXiMain's XInput wrapper`, at a different address on each launch (the client module moves, and the signature finds it). With Enable XInput off, it adds that the client has not loaded `xinputdll.dll` yet, and `//cr pad` says so. With a controller, `reads` goes up and the controller works. L3 + R3 takes the pad without sitting the player or moving the camera. An L3 tap still sits, and R3 held still changes the view. A pad plugged in after the start still works. The mouse lands right at UI Scale 1.5. The HD art draws at login with an addon on nui 1.2.10 loaded. |
 | Chronicle `test/test_pad.lua` | 100 passed, 0 failed (also at `d4417ad`) |
 | Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 90 passed, 0 failed. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
+| Chronicle `test/qa_render.lua`, `36a7467` against `d4417ad` (the keyboard driver) | **Only the Settings shots differ**, on 2026-11-27 on Lego, with the same inputs and the same 12-page sample as the run below. Both trees drew 220 shots (660 raw frames). 654 of 660 frames are identical. The 6 that differ are `settings.*.full` and `.content`, inside y 270 to 357. There the new row "Keyboard (K)" sits at y 270, and "Place and size" moves from y 270 to 304. In the manifests, only the 3 Settings shots differ: `content_h` goes from 280 to 314, and the Settings text has 2 more entries. Both trees hold the same `_chronicle.dll` (`NUI-TAG:1.5.0:0452179ed6c4`). |
 | In game: the keyboard driver | Not tried yet. The test zip is `chronicle-keys-test1.zip`, from `d4417ad`. |
 | Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
 | `test/test_screens.lua` (also at `d4417ad`) | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
@@ -251,8 +252,8 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
    can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
    prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **The keyboard driver: built** (`d4417ad`). Left: the QA frame comparison on Lego (36a7467 against
-   d4417ad, only `settings.*` may differ), and the in-game test with `chronicle-keys-test1.zip`. After it, from
+6. **The keyboard driver: built** (`d4417ad`). The QA frame comparison passed (§4). Left: the in-game
+   test with `chronicle-keys-test1.zip`. After it, from
    `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and a main menu
    item. The key bindings matter more now: the driver uses fixed keys, and it cannot see a binding
    the player made in the game.
