@@ -370,7 +370,9 @@ design above:
   `d386009` and `4c5d3a1`). The box filter fix changes HD pixels, so the atlas format moves to 4. You
   confirmed that. CI runs `test/pad_linux` and builds `test/build_pad_test.sh`.
 - **Wine still does not start** in this container (`free(): invalid pointer`, in the 32-bit and the
-  64-bit wineserver). The Windows pad suite was built and not run.
+  64-bit wineserver). A session on your Windows machine ran the Windows pad suite instead, on
+  2026-11-27. Its first run found two bugs in the tests and none in PadHook. After the fix (`6b821c8`,
+  `test/` only), all 7 modes pass and all 8 faults are caught.
 
 ## 6. Step 4: documentation, built
 
@@ -447,6 +449,7 @@ nui, on `claude/chronicle-workstreams-review-dp0k36`, then on `ccr-d3a8994b-5t63
    stock art, on Linux`, `4c5d3a1`. Picked from `hd-texture-packs`. Done.
 3. `nui 1.5.0: ...` (step 3: PadHook revision 3, its tests, the docs, the `l_screen` comment, the
    release), `50d18a6`. Done.
+4. `test: the stand-in shim reads the fake that the pad test pressed`, `6b821c8`. Done.
 
 Chronicle, on the same branch names:
 
@@ -503,4 +506,5 @@ cannot change them without rewriting the messages, so this table is the key.
 6. `//cr status`: the cache line names `chronicle 2.1.4`. With the 1.2.10 addon loaded, Chronicle still
    draws its window body and the HD art at login.
 7. With Enable XInput off in the FFXI Config: `//cr pad` says so, and does not take the pad.
-8. On Windows, from nui: `sh test/build_pad_test.sh --self-test` and `sh test/build_render_test.sh`.
+8. On Windows, from nui: `sh test/build_pad_test.sh --self-test` (passes, 2026-11-27) and
+   `sh test/build_render_test.sh` (not run: it needs an unpacked `FFXiMain.dll` and Lua 5.1).

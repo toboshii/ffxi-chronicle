@@ -33,8 +33,10 @@ Where it was tested:
 - nui's `test/pad_linux/run.sh` runs on 32-bit Linux, against a stand-in `windows.h`. It runs the mask, the
   chord, and the client's own wrapper bytes through the real patch, thunk, adapter and dispatcher, with the
   stack checked on every call. It also runs the first design of the route 1 thunk, which must crash.
-- nui's `test/build_pad_test.sh` builds here, but Wine does not start in this container, so its exes were not
-  run. Run it on Windows: `sh test/build_pad_test.sh --self-test`.
+- nui's `test/build_pad_test.sh --self-test` passed on Windows on 2026-11-27, at nui `6b821c8`, with MSYS2's
+  32-bit gcc 16.2. It runs both routes against stand-ins for the client, its shim and `xinput1_3.dll`, and all
+  8 fault builds were caught. Wine does not start in the cloud container, so a session on the user's Windows
+  machine ran it.
 
 ## 1. What "controller support" has to mean
 

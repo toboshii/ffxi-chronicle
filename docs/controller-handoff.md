@@ -22,7 +22,7 @@ work.
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | this document's commit | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
-| `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `50d18a6` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
+| `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
 | both | `claude/chronicle-workstreams-review-dp0k36` | Chronicle `e42d0c8`, nui `d8d94e5` | The same work up to test build 1. The 2026-11-26 session continued from these heads on its own branch, `ccr-d3a8994b-5t63ba`. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR branch for the HD work (four commits, no release). The user opens that PR. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
@@ -41,6 +41,7 @@ nui commits on the branch, oldest first:
 | `d386009` | assets: a clear block keeps its colour when HD art is boxed down (picked from `hd-texture-packs` `3259cf9`) |
 | `4c5d3a1` | test: `test/hd_linux`, the HD decode on Linux (picked from `hd-texture-packs` `871a167`) |
 | `50d18a6` | nui 1.5.0: the client's XInput wrapper (revision 3), atlas format 4, the `l_screen` comment |
+| `6b821c8` | test: two fixes in the Windows pad tests, found by their first run (only `test/` changes) |
 
 Chronicle commits on the branch after test build 1:
 
@@ -159,7 +160,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | nui `sh test/hd_linux/run.sh` | 84 passed |
 | nui `python3 test/frozen_check.py` and `--self-test` | Pass |
 | nui `NUI_GXX=i686-w64-mingw32-g++ sh example/build.sh` | Builds |
-| nui `sh test/build_pad_test.sh --self-test` (Windows: both routes, a stand-in client and shim, a real revision 2 module, 8 fault builds) | **Builds, never run.** Wine fails at startup in this container (`free(): invalid pointer` in the 32-bit and the 64-bit wineserver). Run it on Windows. |
+| nui `sh test/build_pad_test.sh --self-test` (Windows: both routes, a stand-in client and shim, a real revision 2 module, 8 fault builds) | **Passes on Windows**, on 2026-11-27 at `6b821c8`, with MSYS2's 32-bit gcc 16.2: main 73, nomatch 6, both 8, r2first 9, foreign 6, nohot 10, wrapper 96, all 0 failed, and all 8 faults caught. A session on the user's Windows machine ran it, because Wine fails at startup in the cloud container. Its first run, at `50d18a6`, found two bugs in the tests and none in PadHook. |
 | nui `test/build_render_test.sh` and `test/build_test.sh`, Chronicle `test/qa_render.lua` | Not run. They need Windows and an unpacked `FFXiMain.dll`. The atlas golden file says format 4 with the old hashes, because no stock pixel should change. |
 
 ## 5. Working here (a Linux cloud container)
@@ -195,8 +196,9 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
    - HD texture pack art draws correctly, at login too, with an addon on nui 1.2.10 loaded.
    - At UI Scale 1.5, clicks, drags and resizes land where the cursor is.
    - With Enable XInput off, `//cr pad` says so and does not take the pad.
-2. **Run the Windows suites:** `sh test/build_pad_test.sh --self-test` and `sh test/build_render_test.sh`
-   from nui. Fix what they find. The pad suite has never run.
+2. **Run the render suite on Windows:** `sh test/build_render_test.sh` from nui. It needs an unpacked
+   `FFXiMain.dll` and Lua 5.1 at `C:\Program Files (x86)\Lua\5.1\lua5.1.dll`, and the user's machine has
+   neither yet. The pad suite passes there.
 3. **The HD PR upstream** (the user opens it). After it merges, rebase the branch onto upstream `main`.
    Git should skip the HD decode and the two picked commits as already applied. The 1.4.2 and 1.5.0
    commits will conflict in `cache.hpp` and `abi.md`. The fork's release numbers (1.3.0 to 1.5.0) will not
