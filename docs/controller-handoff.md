@@ -162,7 +162,8 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | nui `NUI_GXX=i686-w64-mingw32-g++ sh example/build.sh` | Builds |
 | nui `sh test/build_pad_test.sh --self-test` (Windows: both routes, a stand-in client and shim, a real revision 2 module, 8 fault builds) | **Passes on Windows**, on 2026-11-27 at `6b821c8`, with MSYS2's 32-bit gcc 16.2: main 73, nomatch 6, both 8, r2first 9, foreign 6, nohot 10, wrapper 96, all 0 failed, and all 8 faults caught. A session on the user's Windows machine ran it, because Wine fails at startup in the cloud container. Its first run, at `50d18a6`, found two bugs in the tests and none in PadHook. |
 | nui `test/hook_test.exe` (from `test/build_test.sh`) on a plain copy of the installed `FFXiMain.dll` | **Passes on Windows**, 101 of 101, on 2026-11-27 at `6b821c8`. The copy's own DllMain decrypts its code when the test loads it, and the `EndScene` wrapper is at rva `0x9740`, as in game. So for this client build (2,905,680 bytes, SHA-256 `d809ebe3...48fb`) a plain copy in a scratch folder is the "unpacked copy" the suites need. |
-| nui `test/build_render_test.sh` and `test/build_test.sh`, Chronicle `test/qa_render.lua` | Not run. They need Windows, a copy of `FFXiMain.dll` (a plain copy works, see the row above) and Lua 5.1. The atlas golden file says format 4 with the old hashes, because no stock pixel should change. |
+| nui `sh test/build_render_test.sh --self-test` (Windows, stock install, at `6b821c8`) | **22 or 23 of 24 tests pass, and the 40 faults are all caught.** Every atlas, icon and picture golden hash matches, at atlas format 4, so the HD work changed no stock pixel. Two tests fail, and neither is the branch's doing. (1) `wt`: 7 of the 8 window frame crops differ from golden on every run. Upstream's `8b2e53c` gives the same 7 hashes on the same machine, so golden's frame hashes do not hold on that hardware (AMD Radeon Phoenix iGPU, driver 32.0.23044.19, Windows 11 IoT LTSC 24H2, `d3d8.dll` 10.0.26100.9278). (2) `pd`: its first-load timing check missed its limit on 2 of 3 cold first runs (11.0 and 11.8 ms against about 10.5 ms), and passes on reruns. The self-test ran from a local copy of the script that does not stop at the normal run's failure. |
+| nui `test/build_test.sh`, Chronicle `test/qa_render.lua` | Not run. They need the same copy of `FFXiMain.dll` and Lua 5.1, which the user's machine now has. |
 
 ## 5. Working here (a Linux cloud container)
 
@@ -197,10 +198,15 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
    - HD texture pack art draws correctly, at login too, with an addon on nui 1.2.10 loaded.
    - At UI Scale 1.5, clicks, drags and resizes land where the cursor is.
    - With Enable XInput off, `//cr pad` says so and does not take the pad.
-2. **Run the render suite on Windows:** `NUI_FFXI_COPY=<copy> sh test/build_render_test.sh` from nui. A
-   plain copy of the installed `FFXiMain.dll`, in a scratch folder and still named `FFXiMain.dll`, works as
-   the copy. The suite also needs Lua 5.1 at `C:\Program Files (x86)\Lua\5.1\lua5.1.dll`, which the user's
-   machine does not have yet. The pad suite and `hook_test.exe` pass there.
+2. **Upstream's render test, for jintawk.** These come from the Windows run and are in upstream's test code,
+   not in this branch:
+   - `wt`'s frame crop hashes depend on the machine. 7 of 8 differ on the user's AMD iGPU with upstream's
+     own code.
+   - `pd`'s first-load timing sits at its limit on a cold first run on that machine.
+   - `pd` fails (4 checks, decode time 0) when `wt` or `fr` runs before it in the same process
+     (`--only wt,pd`, `--only fr,pd`). It passes alone and in the full run.
+   - gcc 16 warns "null character(s) preserved in literal" at `test_render.cpp:1783`, where the literal
+     holds raw NUL bytes. `"\0\0\0\0IDAT"` would say the same.
 3. **The HD PR upstream** (the user opens it). After it merges, rebase the branch onto upstream `main`.
    Git should skip the HD decode and the two picked commits as already applied. The 1.4.2 and 1.5.0
    commits will conflict in `cache.hpp` and `abi.md`. The fork's release numbers (1.3.0 to 1.5.0) will not

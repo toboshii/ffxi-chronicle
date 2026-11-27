@@ -97,7 +97,8 @@ of the fix is on its side.
 
 - Here: build the DLL (`sh plugin/build.sh`) and run `python3 sync.py check --dll`. Done, and current.
 - On Windows: `sh test/build_render_test.sh` (it needs an unpacked `FFXiMain.dll`). It must pass with
-  `atlas.fmt` 3 and the old hashes. Not run yet.
+  `atlas.fmt` 3 and the old hashes. Run on 2026-11-27, at format 4 (nui 1.5.0): the atlas hashes match,
+  so the HD work changed no stock pixel.
 - If the stock hashes moved, the HD commit also changed the stock decode. One candidate: it now keeps
   the first `font    font` chunk, where 1.2.10 kept the last. In that case, look at the frames, then run
   `--update-golden`.
@@ -507,5 +508,6 @@ cannot change them without rewriting the messages, so this table is the key.
    draws its window body and the HD art at login.
 7. With Enable XInput off in the FFXI Config: `//cr pad` says so, and does not take the pad.
 8. On Windows, from nui: `sh test/build_pad_test.sh --self-test` (passes, 2026-11-27) and
-   `sh test/build_render_test.sh` (not run: it needs Lua 5.1. A plain copy of the installed `FFXiMain.dll`
-   works as its DLL copy: `hook_test.exe` passed on one, 2026-11-27).
+   `sh test/build_render_test.sh --self-test` (run 2026-11-27: every golden atlas, icon and picture hash
+   matches at format 4, and all 40 faults are caught. `wt`'s frame crops differ on that machine with
+   upstream's own code too, and `pd`'s timing misses on a cold first run. See the handoff's §4).
