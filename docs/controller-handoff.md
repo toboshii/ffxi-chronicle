@@ -18,7 +18,8 @@ hot patch refused: the hook reads through the client's wrapper, the chord no lon
 the camera, and every check on the retest list passes. Two pull requests are open on `jintawk/nui`: the HD
 texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
 Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
-frame comparison on Lego finds only the new Settings row (§4). The in-game test is next (§6).
+frame comparison on Lego finds only the new Settings row (§4). The player can now choose the controller chord
+(`1954955`, §3). It passes its tests here and is not tried in game yet.
 
 ## 2. Repositories, branches, commits
 
@@ -59,7 +60,9 @@ Chronicle commits on the branch after test build 1:
 | `5a47e40` | keys: keep the whole keyboard from the game while Chronicle holds it (test build 2 of the keyboard) |
 | `542afb6` | keys: lift the keyboard block before the frame's other work (test build 3) |
 | `fb65dc1` | keys: the player chooses the nav key (test build 4) |
-| this commit | docs: the keyboard driver |
+| `62edb9f` | docs: the choosable nav key |
+| `1954955` | pad: the player chooses the controller chord |
+| this commit | docs: the choosable controller chord |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, atlas format **4**.
@@ -138,7 +141,7 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 | `ui/window.lua` | The cursor, in the "controller" section at the bottom of the file: `pad_mode`, `cursor`, `cursor_key`, `cursor_zone`. The cursor is the hover, so the existing hover drawing shows it. `pad_draw` adds a frame, and the hint line is in the bottom margin. `pad_refind` runs after each layout. `pad_move` is spatial, crosses between head and body at the edges, and steps by a third of the viewport on sparse pages. A mouse move of more than 3 px over the window gives the hover back to the mouse. |
 | `core/app.lua` | `App:go` pushes `cursor = win.cursor_key` onto the stack, and `App:back` passes it to `on_change`, then `set_screen`. |
 | `chronicle.lua` | The section "The controller": `padc`, `pad_read_config`, `pad_join`, `pad_take`, `pad_give`, `pad_act`, `pad_tick` (run from `prerender`), `pad_no_shim`. |
-| `ui/screens/settings.lua` | The rows "Controller (L3+R3)" and "Keyboard (K)". |
+| `ui/screens/settings.lua` | The rows "Controller", "Controller buttons", "Keyboard" and "Keyboard key". |
 | `ui/keys.lua` | Also tracks Ctrl and Alt (`keys.shift()`, `keys.ctrl_alt()`), for the keyboard driver. |
 | `chronicle.lua`, "The keyboard" | `kbd`, `KEY_ACT`, `kbd_take`, `kbd_give`, `kbd_down`, `kbd_tick`, `kbd_reset`. The `keyboard` event runs the search box first, then the driver. |
 | `README.md` | The section "With a controller", and the controller paragraph of "The native layer". |
@@ -146,7 +149,7 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 `chronicle.lua`'s controller code does this:
 - **Joining:** it reads the game's pad config once, then joins on the first frame. On route 1 that works at
   once. On route 0 it retries every 5 s while `xinput1_3.dll` is not loaded. Then it calls
-  `pad_chord(L3+R3)`. Since `dec423c`, `//cr pad` does not take the pad while route 1 is live and the client
+  `pad_chord(mask)` with the player's chord (L3 + R3 by default). Since `dec423c`, `//cr pad` does not take the pad while route 1 is live and the client
   has not loaded its shim. It says why instead: Enable XInput is off, or the shim is not loaded yet.
 - **Taking and giving back:** without the pad, it only watches for the chord edge. With it, it dispatches
   actions. It gives the pad back on Cancel at the root, on hide, logout and lose focus, and on `//cr pad`.
@@ -188,6 +191,40 @@ The keyboard driver (`d4417ad`) does this:
 - **Repeat:** a held arrow repeats on Chronicle's own clock, with the pad's delay and rate. Windower's repeated
   key-downs, if any, move nothing.
 
+The controller chord (`1954955`) does this:
+- **The setting.** `settings.pad_chord` (default `'l3+r3'`, per character) names two buttons. `pad.parse_chord` in
+  `ui/pad.lua` reads names such as `lb+rb` and `back+start`, and gives the mask, a fixed-order name and a label
+  (`LB+RB`). `pad_chord()` in `chronicle.lua` parses it again whenever the setting changes. A name that does not
+  parse falls back to L3 + R3. A new chord goes to the decoder (`D:set_chord`), to `pad.chord_conflicts`, and, once
+  joined, to `nui.N.pad_chord(mask)`.
+- **What nui's hook can hold.** `l_pad_chord` takes any mask in `0x3FFFF` (18 bits), and `apply_chord` takes any
+  number of bits. But `apply_mask` applies the chord step's `hide` and `force` only to the low 16 bits (the XInput
+  button word). A trigger (`0x10000`, `0x20000`) is never held back, so the game would see it go down before its
+  partner. So the parser refuses LT and RT. It also refuses the D-pad (it moves the cursor), a button twice, and
+  anything but two buttons. Guide is not in what `XInputGetState` reports, so it has no name. Allowed: L3, R3, LB, RB,
+  Back, Start, A, B, X, Y. Nothing under `plugin/` changed.
+- **The decoder.** The toggle is the edge of both chord buttons held. A chord button alone acts on its release, and
+  not at all once its partner is held (the old `r3_alone` rule, for both buttons). So with L3 + R3, R3 alone is
+  still Top on release and L3 alone does nothing, exactly as before. With LB + RB, LB alone is `tab_prev` on its
+  release. R3 out of the chord is Top on press.
+- **Text.** The hint line, the first-take chat line, `pad_status_lines` ("ready (LB+RB)", "LB/RB also mapped") and
+  the old-DLL conflict line name the chord. `pad.chord_conflicts(cfg, mask)` checks the padsin ids that are known
+  (0 B, 1 X, 2 Y, 3 A, 10 L3, 13 R3). The ids of LB, RB, Start and Back are not confirmed, so a chord with them is
+  not checked.
+- **The Settings row "Controller buttons".** A click, or Confirm on it, calls `pad_wait_start`. It says so and does
+  not wait when the controller is off or not joined. Otherwise it sets `padc.wait` and calls `pad_capture(true)`.
+  `pad_tick` then feeds `pad_wait_tick` instead of the decoder. Buttons held at the start (the Confirm that chose the
+  row) count only once released. The first frame with two new buttons held ends the wait: the pair becomes the chord,
+  or chat says why it is refused and names the old chord. Three at once are refused. Escape (kept from the game, and
+  the keyboard is blocked while it waits), Cancel pressed and released alone, a second click, or `PAD_WAIT_S` (5 s)
+  with no press keeps the old chord. A press starts the 5 s again. `pad_give` (hide, lose focus, off) ends the wait.
+- **Held buttons around the wait.** The hook's rules do the work, as for `pad_take` and `pad_give`: a press the game
+  saw stays the game's, and a press made under the capture stays hidden until released, also after
+  `pad_capture(false)`. `pad_wait_end` gives the pad back only if Chronicle does not hold it for the cursor. If it
+  does, it latches what is held, so the new chord's buttons do not act on release. `padc.prev` takes the held
+  buttons, so the chord still held does not take the pad. A lapsed hold is taken again during the wait.
+- **Command:** `//cr pad chord [name]` names the chord, or sets it.
+
 Button layout: the D-pad or left stick moves the cursor. A is Confirm and B is Cancel, unless the game's
 config says otherwise. LB/RB change section, LT/RT page, the right stick scrolls, X is Sort, Y is Show,
 Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes or gives back the pad.
@@ -202,6 +239,8 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 112 passed, 0 failed at `5a47e40` (90 at `d4417ad`). Build 2 adds BLOCK-0 to BLOCK-11, one per rule of the block, and each fails without its rule. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
 | Chronicle `test/qa_render.lua`, `36a7467` against `d4417ad` (the keyboard driver) | **Only the Settings shots differ**, on 2026-11-27 on Lego, with the same inputs and the same 12-page sample as the run below. Both trees drew 220 shots (660 raw frames). 654 of 660 frames are identical. The 6 that differ are `settings.*.full` and `.content`, inside y 270 to 357. There the new row "Keyboard (K)" sits at y 270, and "Place and size" moves from y 270 to 304. In the manifests, only the 3 Settings shots differ: `content_h` goes from 280 to 314, and the Settings text has 2 more entries. Both trees hold the same `_chronicle.dll` (`NUI-TAG:1.5.0:0452179ed6c4`). |
 | In game: the keyboard driver, build 1 (`d4417ad`) | K takes and gives back the keys, and the cursor moves. **But the game still got every key**, as above. |
+| Chronicle `test/test_chord.lua` (new at `1954955`, in CI) | 99 passed, 0 failed. CHORD-1 the setting and the command, CHORD-2 the parser, CHORD-3 its refusals, CHORD-4 the fallback, CHORD-5 the edge test and the decoder's toggle, CHORD-6 the hook's mask, CHORD-7 the hint, status, chat and Settings text and the conflict check, CHORD-8 R3 and Top, CHORD-9 to CHORD-14 the Settings row (two buttons, Escape, Cancel, the timeout, a refused pair, not joined), CHORD-15 the held-button rules around the wait. 39 rules were removed in turn, and each made a named check fail. Removing the D-pad, trigger or unknown-name refusal also stops the run in the command check, because the sort then compares a nil rank. `test_pad` 100 and `test_keys` 139 still pass unchanged. |
+| In game: the choosable controller chord (`1954955`) | Not tried yet. |
 | In game: build 4 (`fb65dc1`), the choosable key | Not tried yet. The test zip is `chronicle-keys-test4.zip`. `test_keys` has 139 checks, and each rule of the key was removed in turn and caught. |
 | In game: the keyboard driver, build 2 (`5a47e40`) and build 3 (`542afb6`, on a second machine) | **Works**, by the user's report of 2026-11-27. Every check passes: the arrows and Page Up/Down no longer move the camera, a letter typed in the search box opens no game menu, and the game gets its keys back as soon as Chronicle gives them back. One limit: under the block, Windower runs no bind, so a bind for `//cr nav` starts nav mode but cannot end it. K, and Escape or Backspace at the root, still end it. The README says so. |
 | Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
