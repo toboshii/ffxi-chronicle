@@ -17,13 +17,15 @@ mouse fix. **Test build 2 works in game**, by the user's report of 2026-11-27, o
 hot patch refused: the hook reads through the client's wrapper, the chord no longer sits the player or turns
 the camera, and every check on the retest list passes. Two pull requests are open on `jintawk/nui`: the HD
 texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
-Chronicle side has no pull request. The next piece of work is a keyboard driver (§6).
+Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3) and passes its tests here. The
+QA frame comparison and the in-game test are next (§4, §6).
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | this document's commit | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
+| both | `ccr-bfbc0043-hhlj8v` | Chronicle: this document's commit. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver. nui is unchanged. |
+| `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `36a7467` | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
 | both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded to `ccr-d3a8994b-5t63ba` in both repositories when they ask, last on 2026-11-27. Compare the two heads before you rely on either. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
@@ -52,7 +54,9 @@ Chronicle commits on the branch after test build 1:
 |---|---|
 | `c8ac1c6` | nui 1.5.0: the vendored copy and `_chronicle.dll` 2.1.4 |
 | `dec423c` | pad: `//cr pad` says why when the game is not reading XInput |
-| this commit | docs: step 4 |
+| `9756f36` | docs: step 4 |
+| `d4417ad` | keys: K drives the cursor from the keyboard (on `ccr-bfbc0043-hhlj8v`) |
+| this commit | docs: the keyboard driver |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, atlas format **4**.
@@ -131,7 +135,9 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 | `ui/window.lua` | The cursor, in the "controller" section at the bottom of the file: `pad_mode`, `cursor`, `cursor_key`, `cursor_zone`. The cursor is the hover, so the existing hover drawing shows it. `pad_draw` adds a frame, and the hint line is in the bottom margin. `pad_refind` runs after each layout. `pad_move` is spatial, crosses between head and body at the edges, and steps by a third of the viewport on sparse pages. A mouse move of more than 3 px over the window gives the hover back to the mouse. |
 | `core/app.lua` | `App:go` pushes `cursor = win.cursor_key` onto the stack, and `App:back` passes it to `on_change`, then `set_screen`. |
 | `chronicle.lua` | The section "The controller": `padc`, `pad_read_config`, `pad_join`, `pad_take`, `pad_give`, `pad_act`, `pad_tick` (run from `prerender`), `pad_no_shim`. |
-| `ui/screens/settings.lua` | The row "Controller (L3+R3)". |
+| `ui/screens/settings.lua` | The rows "Controller (L3+R3)" and "Keyboard (K)". |
+| `ui/keys.lua` | Also tracks Ctrl and Alt (`keys.shift()`, `keys.ctrl_alt()`), for the keyboard driver. |
+| `chronicle.lua`, "The keyboard" | `kbd`, `KEY_ACT`, `kbd_take`, `kbd_give`, `kbd_down`, `kbd_tick`, `kbd_reset`. The `keyboard` event runs the search box first, then the driver. |
 | `README.md` | The section "With a controller", and the controller paragraph of "The native layer". |
 
 `chronicle.lua`'s controller code does this:
@@ -145,6 +151,25 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 - **Setting:** `pad = true` by default.
 - **Command:** `//cr pad [on|off|status]`. Status lines are also added to `//cr status`.
 
+The keyboard driver (`d4417ad`) does this:
+- **One cursor, two holds.** `W:pad_enter(hint, who)` and `W:pad_leave(who, other_hint)` keep a holder per input
+  (`'pad'`, `'keys'`). The cursor goes only when neither holds it. `nav_act(a, give, hint)` is the action map for
+  both inputs, so Cancel at the root gives back only the input that pressed it. The hint line follows the input
+  that acted last (`W:pad_hint_for`).
+- **Taking and giving back:** K, or `//cr nav`. K shows the window if it is hidden, as the chord does. The keys go
+  back on K, on Escape or Backspace at the root, on hide, logout, unload and lose focus, on `//cr nav`, and when the
+  setting goes off (`nav = true` by default, `//cr nav on|off`).
+- **The keys:** the arrows move, and Enter opens. Backspace and Escape go back. Tab and Shift + Tab change section.
+  Page Up and Page Down page. Home and End go to the top and the bottom (`bottom` is a new action).
+- **A press:** `kbd.game` records each press the game saw. Its repeats and its release stay the game's.
+  `kbd.took` records each press the driver took. Its repeats and its release stay Chronicle's, even after the keys
+  go back or the search box takes focus. The driver clears both on lose focus and gain focus, because a key released
+  elsewhere never sends its key-up.
+- **What is never taken:** a new press while the chat line is open (`get_info().chat_open`), with Ctrl or Alt held,
+  or while the module does not draw (review LIFE-4). The focused search box comes first.
+- **Repeat:** a held arrow repeats on Chronicle's own clock, with the pad's delay and rate. Windower's repeated
+  key-downs, if any, move nothing.
+
 Button layout: the D-pad or left stick moves the cursor. A is Confirm and B is Cancel, unless the game's
 config says otherwise. LB/RB change section, LT/RT page, the right stick scrolls, X is Sort, Y is Show,
 Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes or gives back the pad.
@@ -155,9 +180,11 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 |---|---|
 | In game: navigation, taking and giving back the pad | **Works**, by the user's report (nui 1.3.0 build) |
 | In game, test build 2 (`_chronicle.dll` 2.1.4, nui 1.5.0), on the machine where route 0 refused | **Works**, by the user's report of 2026-11-27. `//cr pad status` says `live at FFXiMain's XInput wrapper`, at a different address on each launch (the client module moves, and the signature finds it). With Enable XInput off, it adds that the client has not loaded `xinputdll.dll` yet, and `//cr pad` says so. With a controller, `reads` goes up and the controller works. L3 + R3 takes the pad without sitting the player or moving the camera. An L3 tap still sits, and R3 held still changes the view. A pad plugged in after the start still works. The mouse lands right at UI Scale 1.5. The HD art draws at login with an addon on nui 1.2.10 loaded. |
-| Chronicle `test/test_pad.lua` | 100 passed, 0 failed |
-| Chronicle's CI suites (`test_doc`, `test_input`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,112 files compile) |
-| `test/test_screens.lua` | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
+| Chronicle `test/test_pad.lua` | 100 passed, 0 failed (also at `d4417ad`) |
+| Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 90 passed, 0 failed. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
+| In game: the keyboard driver | Not tried yet. The test zip is `chronicle-keys-test1.zip`, from `d4417ad`. |
+| Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
+| `test/test_screens.lua` (also at `d4417ad`) | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
 | `test_core`, `test_data`, `test_load`, `test_progress` | Not run here. They need a v1 worktree, the real DLL, or Windows. |
 | nui `sh test/pad_linux/run.sh --self-test` (32-bit Linux) | logic 19, chord 19, wrapper 54: all pass. The route 0 thunk in the client's slot dies with SIGSEGV once a dispatcher drives, as it must. Both route 1 faults are caught. |
 | nui `sh test/hd_linux/run.sh` | 84 passed |
@@ -224,9 +251,11 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
    can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
    prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **Next work: the keyboard driver.** `docs/next-session-prompt.md` is the brief for it. After it, from
+6. **The keyboard driver: built** (`d4417ad`). Left: the QA frame comparison on Lego (36a7467 against
+   d4417ad, only `settings.*` may differ), and the in-game test with `chronicle-keys-test1.zip`. After it, from
    `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and a main menu
-   item.
+   item. The key bindings matter more now: the driver uses fixed keys, and it cannot see a binding
+   the player made in the game.
 7. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
    resizing the window from the pad.
 8. **Small loose ends:**

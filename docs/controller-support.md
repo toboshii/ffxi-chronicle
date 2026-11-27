@@ -1,9 +1,9 @@
 # Controller support: research and plan
 
-Status, 2026-11-26: **implemented**, on `claude/chronicle-workstreams-review-dp0k36` in both repositories. It
+Status, 2026-11-27: **implemented**, on `ccr-d3a8994b-5t63ba` and `ccr-bfbc0043-hhlj8v` in both repositories. It
 ran in game on nui 1.3.0, where navigation and taking the pad worked. Test build 2 (nui 1.5.0, `_chronicle.dll`
 2.1.4) works in game too, by the user's report of 2026-11-27, on the machine where the first build's hook
-refused. `docs/controller-handoff.md` has the state of the work, and
+refused. The keyboard driver (Phase 1) is built and passes its tests here. Nobody tried it in game yet. `docs/controller-handoff.md` has the state of the work, and
 `docs/test-findings-plan.md` has the fixes from the two test reports.
 
 Decisions taken:
@@ -25,7 +25,15 @@ What changed from the plan:
   the fallback, for a client whose wrapper nui does not find.
 - "Held before the capture" means what the game had already seen pressed (its last output), not what is held
   at the first read after the capture. A press arriving in that same read is Chronicle's.
-- Phase 1's keyboard driver was not built. It is the next piece of work (`docs/test-findings-plan.md` §7).
+- Phase 1's keyboard driver is built, on 2026-11-27 (`d4417ad`), and the user agreed its design first:
+  - K takes the keys and gives them back. `//cr nav` does the same, and the player can bind it with Windower's
+    `bind`. K takes nothing while the chat line is open, or with Ctrl or Alt held.
+  - The pad and the keyboard hold the one cursor separately. L3 + R3 never takes the arrow keys, and K never takes
+    the pad.
+  - The keys are the arrows, Enter, Backspace, Escape, Tab (Shift + Tab goes back), Page Up and Page Down, Home
+    and End. Escape and Backspace go back. At a section's home they give the keys back, as Cancel gives the pad
+    back.
+  - The Settings row "Keyboard (K)" is on by default.
 - If the hold lapses during a stall, Chronicle takes the pad again on the next frame, and the buttons still
   held wait for their release.
 
@@ -374,7 +382,8 @@ and no input" changes to describe the pad hook.
 5. Read `padmode000` and `padsin000` for preset F and a few real configs. Pick the default
    chord, and note which buttons are Confirm and Cancel.
 
-**Phase 1: navigation core and keyboard driver.** Lua only, and can ship on its own.
+**Phase 1: navigation core and keyboard driver.** Lua only, and can ship on its own. Built: the navigation core
+with the controller, and the keyboard driver on 2026-11-27 (`d4417ad`, `test/test_keys.lua`).
 
 - `ui/nav.lua`, the window cursor, and cursor restore on back.
 - A keyboard driver: in `//cr nav` mode the arrows, Enter, Backspace, Tab and PgUp/PgDn drive

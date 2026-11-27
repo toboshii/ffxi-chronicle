@@ -393,7 +393,8 @@ design above:
 
 Each item is worth doing. None is needed for the fixes. My recommended order:
 
-1. **A keyboard driver, in Lua only.** This is Phase 1 of the original plan. Windower's `keyboard` event
+1. **A keyboard driver, in Lua only. Built on 2026-11-27** (`d4417ad`). K takes the keys and gives them back
+   (`docs/controller-handoff.md` §3). This is Phase 1 of the original plan. Windower's `keyboard` event
    can already keep a key from the game, and `ui/nav.lua` works with any input. It needs no native
    code. It also covers players whose pad Steam Input, DS4Windows or reWASD maps to keys.
 
