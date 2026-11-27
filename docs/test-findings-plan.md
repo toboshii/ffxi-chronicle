@@ -507,4 +507,5 @@ cannot change them without rewriting the messages, so this table is the key.
    draws its window body and the HD art at login.
 7. With Enable XInput off in the FFXI Config: `//cr pad` says so, and does not take the pad.
 8. On Windows, from nui: `sh test/build_pad_test.sh --self-test` (passes, 2026-11-27) and
-   `sh test/build_render_test.sh` (not run: it needs an unpacked `FFXiMain.dll` and Lua 5.1).
+   `sh test/build_render_test.sh` (not run: it needs Lua 5.1. A plain copy of the installed `FFXiMain.dll`
+   works as its DLL copy: `hook_test.exe` passed on one, 2026-11-27).
