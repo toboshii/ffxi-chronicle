@@ -57,6 +57,8 @@ Chronicle commits on the branch after test build 1:
 | `9756f36` | docs: step 4 |
 | `d4417ad` | keys: K drives the cursor from the keyboard (on `ccr-bfbc0043-hhlj8v`) |
 | `5a47e40` | keys: keep the whole keyboard from the game while Chronicle holds it (test build 2 of the keyboard) |
+| `542afb6` | keys: lift the keyboard block before the frame's other work (test build 3) |
+| `fb65dc1` | keys: the player chooses the nav key (test build 4) |
 | this commit | docs: the keyboard driver |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
@@ -177,6 +179,12 @@ The keyboard driver (`d4417ad`) does this:
   `kbd_block` turns it on while the keys are held or the search box has focus, on a window that draws. It
   changes only while no key is down (`kbd.down`, `kbd.ndown`). It waits at most 0.5 s to start
   (`BLOCK_WAIT_ON`) and 2 s to end (`BLOCK_WAIT_OFF`). Losing focus and unloading lift it at once.
+- **The nav key (`fb65dc1`).** `settings.nav_key` (default `'k'`) names it, and `keys.parse` reads names such as
+  `ctrl+n`, `f10` and Windower's `^n`. Ctrl and Alt must match exactly. Shift may be held for a key without Shift.
+  A key that moves the cursor needs a modifier. The Settings row "Keyboard key" sets `kbd.capture`, and the next
+  key pressed becomes the key. Escape cancels, and the keyboard is blocked while Chronicle waits. `//cr nav key
+  <name>` sets it too. A bind for `//cr nav` cannot end nav mode under the block, so this is the way to use another
+  key.
 - **Repeat:** a held arrow repeats on Chronicle's own clock, with the pad's delay and rate. Windower's repeated
   key-downs, if any, move nothing.
 
@@ -194,6 +202,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | Chronicle `test/test_keys.lua` (new at `d4417ad`, in CI) | 112 passed, 0 failed at `5a47e40` (90 at `d4417ad`). Build 2 adds BLOCK-0 to BLOCK-11, one per rule of the block, and each fails without its rule. Each rule has named checks (KEYS-R1 a press the game saw, KEYS-R2 a press Chronicle took, KEYS-S the search box, KEYS-C the chat line and Ctrl, KEYS-E the ways out, KEYS-T two holds, KEYS-D not drawing). Each rule was removed in turn, and its checks failed each time. |
 | Chronicle `test/qa_render.lua`, `36a7467` against `d4417ad` (the keyboard driver) | **Only the Settings shots differ**, on 2026-11-27 on Lego, with the same inputs and the same 12-page sample as the run below. Both trees drew 220 shots (660 raw frames). 654 of 660 frames are identical. The 6 that differ are `settings.*.full` and `.content`, inside y 270 to 357. There the new row "Keyboard (K)" sits at y 270, and "Place and size" moves from y 270 to 304. In the manifests, only the 3 Settings shots differ: `content_h` goes from 280 to 314, and the Settings text has 2 more entries. Both trees hold the same `_chronicle.dll` (`NUI-TAG:1.5.0:0452179ed6c4`). |
 | In game: the keyboard driver, build 1 (`d4417ad`) | K takes and gives back the keys, and the cursor moves. **But the game still got every key**, as above. |
+| In game: build 4 (`fb65dc1`), the choosable key | Not tried yet. The test zip is `chronicle-keys-test4.zip`. `test_keys` has 139 checks, and each rule of the key was removed in turn and caught. |
 | In game: the keyboard driver, build 2 (`5a47e40`) and build 3 (`542afb6`, on a second machine) | **Works**, by the user's report of 2026-11-27. Every check passes: the arrows and Page Up/Down no longer move the camera, a letter typed in the search box opens no game menu, and the game gets its keys back as soon as Chronicle gives them back. One limit: under the block, Windower runs no bind, so a bind for `//cr nav` starts nav mode but cannot end it. K, and Escape or Backspace at the root, still end it. The README says so. |
 | Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
 | `test/test_screens.lua` (also at `d4417ad`) | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
