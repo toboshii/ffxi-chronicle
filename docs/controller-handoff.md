@@ -4,7 +4,7 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-27.
+Last updated 2026-11-27 (the keyboard hook).
 
 ## 1. State in one paragraph
 
@@ -20,15 +20,18 @@ texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`).
 Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
 frame comparison on Lego finds only the new Settings row (§4). The player can now choose the controller chord
 (`1954955`, §3), and Cancel at the root can hide the window (`cffc161`, auto-hide, §3). Both work in game, by the
-user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). The keyboard driver keeps keys from the
-game with Windower's `keyboard_blockinput`, which blocks the whole keyboard, and Windower's binds with it. The next
-piece of work is a keyboard hook in nui that hides only the keys Chronicle uses (§6, `docs/next-session-prompt.md`).
+user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). **The nui keyboard hook is built** (nui
+1.6.0, `dc45e56`, §3). It hides only the keys Chronicle names, after Windower's wrapper sees them, so chat, macros
+and binds work in nav mode. Chronicle uses it from `9c0ab84` (`_chronicle.dll` 2.1.5). The search box still blocks the
+whole keyboard, and so does nav mode when the hook is missing or refused. Its Linux and Windows tests pass. It is
+**not tested in game yet**: keyboard hook test build 1 went to the user on 2026-11-27 with a checklist (§4).
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `ccr-bfbc0043-hhlj8v` | Chronicle: this document's commit. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
+| both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
+| both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `b24f027` (fast-forwarded on 2026-11-27) | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the keyboard work, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
 | both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded when they ask. On 2026-11-27 Chronicle's review branch and `ccr-d3a8994b-5t63ba` both went to `b24f027`. In nui all three branches are at `6b821c8`. Compare the heads before you rely on any of them. |
@@ -51,6 +54,8 @@ nui commits on the branch, oldest first:
 | `4c5d3a1` | test: `test/hd_linux`, the HD decode on Linux (picked from `hd-texture-packs` `871a167`) |
 | `50d18a6` | nui 1.5.0: the client's XInput wrapper (revision 3), atlas format 4, the `l_screen` comment |
 | `6b821c8` | test: two fixes in the Windows pad tests, found by their first run (only `test/` changes) |
+| `dc45e56` | nui 1.6.0: keep single keys from the game (KeyHook 1, revision 1) |
+| `8820af0` | test: the key test's status check names the exe it runs in (found by its first Windows run) |
 
 Chronicle commits on the branch after test build 1:
 
@@ -69,10 +74,14 @@ Chronicle commits on the branch after test build 1:
 | `cffc161` | ui: Cancel at the root can hide the window (auto-hide) |
 | `acad148` | docs: auto-hide |
 | `b24f027` | docs: builds 4 to 6 work in game |
-| this commit | docs: the handoff and the prompt for the nui keyboard hook |
+| `652a620` | docs: the handoff and the prompt for the nui keyboard hook |
+| `89b0de8` | docs: how the client reads the keyboard (the research note and Lego's report) |
+| `22cb958` | nui 1.6.0: the vendored copy and `_chronicle.dll` 2.1.5 |
+| `9c0ab84` | keys: hide only Chronicle's keys from the game, with nui's key hook (keyboard hook test build 1) |
+| this commit | docs: the keyboard hook |
 
-Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
-**2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, atlas format **4**.
+Versions now: nui **1.6.0**, `_chronicle.dll` **2.1.5** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
+**2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, KeyHook ABI **1**, revision **1**, atlas format **4**.
 
 ## 3. Architecture
 
@@ -139,6 +148,41 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 - **DirectInput later.** `PadState::source` reserves `PADHOOK_SRC_DINPUT`. The mask works on one button
   word in XInput's layout, with LT and RT as bits `0x10000` and `0x20000`.
 
+### Native, in nui: `src/KeyHook/KeyHook.h` and `src/key.cpp` (nui 1.6.0)
+
+- **Why native.** Windower's `keyboard` event cannot keep a key from the game, and `keyboard_blockinput` keeps every key
+  and stops Windower's binds. The research is `docs/keyboard-hook-research.md`, and Lego's report with every byte is
+  `docs/keyboard-client-report.md`.
+- **The client.** One function reads the DirectInput keyboard once per main loop tick on the main thread:
+  `GetDeviceState` (256 bytes) at `0x10005A86`, then `GetDeviceData` (16 events, no peek) at `0x10005B1D`, in the
+  2026-11-02 build. A key counts as down from its state byte or a press event. With Windower, the device is Windower's
+  keyboard wrapper (`Hook.dll`, `windower::direct_input_keyboard`), which applies its block, console key and binds
+  first.
+- **The bus.** `Local\FFXiKeyHook_v1_<pid>`, 4 KB, frozen as `test/frozen/layout_keyhook.1.6.0.txt`. The same rules as
+  PadHook: one patch per process, the live module with the highest revision drives, a module hands the dispatch on in
+  `DllMain`, and the thunks are in one 128-byte block that is never freed.
+- **The sites.** The instruction after each read is `cmp eax, 0x800700AA`. Two signatures (45 and 42 bytes, from the device
+  load to the `cmp`) must each match once in `FFXiMain.dll`'s code. Both must load the device from the same offset,
+  the event read must follow within 1 KB, and each `cmp` must lie in one aligned 8-byte block (`0x10005A89` is 8n+1,
+  `0x10005B20` is 8n+0). Lego checked both signatures against the real image: one match each, in `.text`.
+- **The patch.** Each `cmp` becomes `call thunk` (same length), in one locked 8-byte compare-and-exchange. The thunk
+  saves eax, ecx and edx, calls the dispatcher with `(kind, hr, data, count, asked, device)` (`__stdcall`), restores
+  them, runs the client's own `cmp` and returns with `ret`, which keeps the flags. The device is `[esi+disp]`, the
+  state buffer `edi`, the events `ebx`, the count `ebp`: the signatures fix those registers. The thunk chains
+  nothing, because the read has already run.
+- **The press rules** (`apply_state`, `apply_events`), one record per key for both reads (`saw`, `hid`):
+  - The dispatcher decides a new press once, at the first read that shows it, from the union of the live clients'
+    masks.
+  - A press the game saw stays the game's, and a hidden press stays hidden, until its release event.
+  - A lost release ends a press once the state shows the key up and an event read returns fewer events than asked.
+  - When a module starts to drive after nobody did (`set_owner`), the next state read gives every held key to the game
+    (`KeyState.primed`).
+  - A mask lapses 250 ms after its last `key_hide` (the heartbeat).
+- **Lua API** (`key.hpp`): `key_start([flags])`, `key_hide(code, ...)` (the codes as arguments, because nui binds no
+  `lua_rawgeti`, so Lua passes `unpack(list)`), `key_status()` (with `device`, the module of the device's vtable) and
+  `key_stop()`. `stop()` calls `key_release()`, and `host_detach` calls `key_detach()`.
+- **What it does not see.** The chat line reads Space, `/` and typed text from `WM_KEYDOWN` and `WM_CHAR`.
+
 ### Lua, in Chronicle
 
 | File | Role |
@@ -195,6 +239,14 @@ The keyboard driver (`d4417ad`) does this:
   key pressed becomes the key. Escape cancels, and the keyboard is blocked while Chronicle waits. `//cr nav key
   <name>` sets it too. A bind for `//cr nav` cannot end nav mode under the block, so this is the way to use another
   key.
+- **The key hook (`9c0ab84`).** `kbd_hook_join` joins on the first frame. `kbd_hide_sync` sends the list every frame
+  while it holds keys, and after every key event, so a change made by a key (K, Ctrl, Alt) is in place for the game's
+  next read. The list (`kbd_hide_want`, as bits): the nav key when its own Ctrl and Alt match, the nav keys while
+  `kbd.held` with neither Ctrl nor Alt on a window that draws, and Escape while `padc.wait`. Nothing new while the chat
+  line is open (`kbd_chat`, asked on each key and at most every 0.1 s from prerender). With the hook, `kbd_want_block`
+  blocks only for the search box and `kbd.capture`. Without it (no `key_start`, or a refusal), it blocks as before.
+  `kbd_status_lines` (`//cr nav status`, and in `//cr status`) names the way and the reason. Lose focus empties the
+  list at once.
 - **Repeat:** a held arrow repeats on Chronicle's own clock, with the pad's delay and rate. Windower's repeated
   key-downs, if any, move nothing.
 
@@ -269,6 +321,11 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | In game: the choosable controller chord (`1954955`, test build 5) | **Works**, by the user's report of 2026-11-27. Every check on the agent's list passes. |
 | Chronicle `test/test_autohide.lua` (new at `cffc161`, in CI) | 94 passed, 0 failed. HIDE-1 the setting, its default, the row and a saved value, HIDE-2 off as before, HIDE-3 the pad's Cancel hides (also the game's own Cancel on A), HIDE-4 Escape and Backspace hide, HIDE-5 a Cancel that goes back, closes a picture or leaves the search box does not, HIDE-6 the chord, the nav key, the commands and the waiting Settings rows do not, HIDE-7 the pad's Cancel stays from the game until its release (the test models the hook's rule), HIDE-8 the keyboard block lifts only with the key's release, HIDE-9 both inputs held, HIDE-10 showing again, HIDE-11 the command and the help line. 22 rules were removed or broken in turn, and each made a named check fail. `test_pad` 100, `test_keys` 139 and `test_chord` 99 still pass unchanged. `test_screens` gives 18,395 passed and the same 4 Linux failures as before. |
 | In game: auto-hide (`acad148`, test build 6) | **Works**, by the user's report of 2026-11-27. Every check on the list passes. |
+| nui `sh test/key_linux/run.sh --self-test` (32-bit Linux, `dc45e56`) | logic 53, sites 36: all pass, with the client's real read bytes executed through the patch, and the stack, registers, eax and flags checked after each `cmp`. 8 faults caught (NO_HEARTBEAT, TAKE_HELD, LEAK_HELD, NO_EVENTS, NO_DRAIN, NO_PRIME, NO_CMP, FIRST_MATCH). |
+| nui `sh test/build_key_test.sh --self-test` (Windows, on Lego, `dc45e56`) | main 35/0, nomatch 6/0, all 6 faults caught. The run found one test bug: the STATUS check failed in every fault build, so a fault that changes nothing would also have counted as caught (fixed in `8820af0`, test only). Each fault was caught by its own checks as well. The pad suite (7 modes, 8 faults) and `hook_test.exe` (101/0) are unchanged. **At `8820af0`:** main 35/0, nomatch 6/0, all 6 faults caught by their own checks (NO_HEARTBEAT KEY-13; TAKE_HELD KEY-3, KEY-15; LEAK_HELD KEY-4, R2; NO_EVENTS KEY-2, KEY-4, KEY-5, R2; NO_CMP JOIN, LEAVE; NO_PRIME KEY-15, R2), and a build with no fault named `key_fault.exe` passes 35/0. |
+| Lego: the two signatures over the real 2026-11-02 image | One match each, in `.text`. Device offset `0x88`, 16 events asked, the `cmp`s at `0x10005A89` (8n+1) and `0x10005B20` (8n+0), each inside one aligned block. |
+| Chronicle `test/test_keys.lua` at `9c0ab84` | 179 passed. HOOK-0 to HOOK-17 cover the hook path, and the BLOCK checks the fallback (the fake DLL refuses the hook unless a test asks for it). 18 rules were removed in turn, and each made a named check fail. The CI suites, `test_pad` and `syntax_check` (3,115 files) pass. `test_screens`: 18,395 passed, the same 4 Linux failures. |
+| In game: keyboard hook test build 1 (`9c0ab84`) | **Not yet tested.** The zip and a 14-step checklist went to the user on 2026-11-27. |
 | QA frames after builds 4 to 6 | Not run, by the user's choice. Builds 4 to 6 add Settings rows ("Keyboard key", "Controller buttons", "Hide on Back") and rename two ("Keyboard", "Controller"). So the Settings frames differ from the last comparison, and no other screen's drawing changed. |
 | In game: build 4 (`fb65dc1`), the choosable key | **Works**, by the user's report of 2026-11-27. Ctrl+N set from the Settings row takes and gives back the keys under the block, and Escape keeps the old key. `test_keys` has 139 checks, and each rule of the key was removed in turn and caught. |
 | In game: the keyboard driver, build 2 (`5a47e40`) and build 3 (`542afb6`, on a second machine) | **Works**, by the user's report of 2026-11-27. Every check passes: the arrows and Page Up/Down no longer move the camera, a letter typed in the search box opens no game menu, and the game gets its keys back as soon as Chronicle gives them back. One limit: under the block, Windower runs no bind, so a bind for `//cr nav` starts nav mode but cannot end it. K, and Escape or Backspace at the root, still end it. The README says so. |
@@ -333,8 +390,8 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
    (`.github/workflows/build.yml` and `README.md`). Whichever merges second needs a rebase onto upstream
    `main`, and `abi.md` merges cleanly. If the HD PR merges first, rebase `controller-pad-hook`. Answer
    review comments on the user's behalf only when the user asks.
-4. **After both merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.5.0. The fork's
-   release numbers (1.3.0 to 1.5.0) give way to upstream's then, so agree on that with the user. DLLs built
+4. **After both merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.6.0. The fork's
+   release numbers (1.3.0 to 1.6.0) give way to upstream's then, so agree on that with the user. DLLs built
    on the fork's revisions 1 to 3 stay compatible with upstream's, because the bus and its frozen layout are
    the same.
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
@@ -343,13 +400,15 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 6. **The keyboard driver: built and works in game**, with the choosable nav key, the choosable controller chord
    and auto-hide (§4). The QA frames matched at `d4417ad`. The user chose not to run them again after builds 4 to
    6, which change only Settings rows.
-7. **Next: a keyboard hook in nui.** `docs/next-session-prompt.md` is the brief. Today Chronicle keeps keys from
-   the game with `keyboard_blockinput 1`. That blocks every key, so the player cannot chat or use a macro in nav
-   mode, and Windower runs no bind. A hook that hides only the keys Chronicle uses fixes all three. It needs
-   research first: how the game reads the keyboard through Windower's DirectInput8 wrapper.
-8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and
-   a main menu item. The key bindings matter less once the hook hides only Chronicle's keys, but the nav key
-   can still clash with a key the player bound in the game.
+7. **The keyboard hook: built, not yet tested in game** (§3, §4). Next: the user's results from test build 1. If
+   `//cr nav status` says the hook is live, the checklist's points on Space, `/` and the search box show whether the
+   chat line ever opens from a hidden key. If nui refuses the hook in game, the `why:` part says which check failed.
+   Then the keyboard hook could become a third upstream PR, from its own branch, when the user asks.
+8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings and a main menu item. The
+   research settled the input mask: it gates action categories, not keys (`docs/keyboard-hook-research.md` §1.6).
+   The key bindings matter less now that the hook hides only Chronicle's keys, but the nav key can still clash with a
+   key the player bound in the game. The research found the action bindings table (`0x1036E6E8`, up to three
+   bindings per action), which is a start.
 9. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
    resizing the window from the pad.
 10. **Small loose ends:**
@@ -360,9 +419,20 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
    - The `l_screen` comment fix in `src/host.cpp` is only in the fork's 1.5.0, not in either pull request.
    - `claude/hd-texture-packs` is stale. The user deletes it, because the proxy refuses branch deletes.
    - `test_pad` is not in Chronicle's CI loop. `test_keys`, `test_chord` and `test_autohide` are.
-   - The README's keyboard section has one 24-word instruction sentence that the style checker flags.
+   - The chat line reads typed text from window messages. A filter there (a message hook on the game's thread)
+     would let the search box use the key hook instead of `keyboard_blockinput`. The user chose to keep the block
+     for the search box for now. Where Windower raises its `keyboard` event is not known, and a message filter
+     must not hide a key from it.
 
 ## 7. Facts from the research worth keeping
+
+From the keyboard research (2026-11-27, `docs/keyboard-hook-research.md`):
+- The client reads the keyboard in one function, once per tick: `GetDeviceState` then `GetDeviceData` (16 events).
+  It ignores release events.
+- Windower 4's `Hook.dll` wraps the keyboard device and filters the same two reads (block, console key, binds).
+- The chat line takes Space (`WM_CHAR`), `/` (`WM_KEYDOWN`) and typed text from window messages. Enter and Escape
+  come from the DirectInput press edges.
+- `FUN_10124b70` sets a mask of action categories. It cannot hide one key.
 
 Found in game on 2026-11-27, with test builds 1 to 3 of the keyboard driver:
 - A `true` return from Windower's `keyboard` event keeps no key from the game. A tap of an arrow turns the camera,
