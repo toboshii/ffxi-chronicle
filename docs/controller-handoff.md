@@ -15,8 +15,9 @@ own XInput wrapper, because the old hot patch of `xinput1_3.dll!XInputGetState` 
 machine. Chronicle vendors nui 1.5.0 in `_chronicle.dll` 2.1.4, and carries upstream's Chronicle 2.1.1
 mouse fix. **Test build 2 works in game**, by the user's report of 2026-11-27, on the machine where the old
 hot patch refused: the hook reads through the client's wrapper, the chord no longer sits the player or turns
-the camera, and every check on the retest list passes. Two pull requests are open on `jintawk/nui`: the HD
-texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
+the camera, and every check on the retest list passes. Three pull requests are open on `jintawk/nui`: the HD
+texture pack work (`hd-texture-packs`), the pad hook (`controller-pad-hook`), and the key hook (`keyboard-key-hook`,
+stacked on the pad hook). Upstream has merged none yet. The
 Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
 frame comparison on Lego finds only the new Settings row (§4). The player can now choose the controller chord
 (`1954955`, §3), and Cancel at the root can hide the window (`cffc161`, auto-hide, §3). Both work in game, by the
@@ -37,7 +38,7 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 | both | `claude/chronicle-workstreams-review-dp0k36` | `ccr-d3a8994b-5t63ba`'s heads when last fast-forwarded | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). The user has the review branch fast-forwarded when they ask. On 2026-11-27 Chronicle's review branch and `ccr-d3a8994b-5t63ba` both went to `b24f027`. In nui all three branches are at `6b821c8`. Compare the heads before you rely on any of them. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `controller-pad-hook` | `79bb531` | The upstream PR for the pad hook, "Read and hold the controller the game reads", on upstream `main` `8b2e53c`. Four commits: revision 1, revision 2, the Linux tests, revision 3. It has no release commit, no HD work and no `l_screen` comment fix. It names PadHook revisions instead of the fork's release numbers, and its frozen layout is `test/frozen/layout_padhook.rev1.txt`. Open on `jintawk/nui`, waiting for review. |
-| `toboshii/nui` | `keyboard-key-hook` | `db02f6c` | The upstream PR for the key hook, "Keep single keys from the game", stacked on `controller-pad-hook` (`79bb531`): its first four commits are that PR. Two commits of its own: the hook with its docs and Windows tests (`f66b72c`), and the Linux suite (`db02f6c`). Like the pad PR, it names KeyHook revisions instead of the fork's release numbers, has no release commit, and freezes `test/frozen/layout_keyhook.rev1.txt`. Its hook sources and tests match nui `8820af0` byte for byte. The user opens it on `jintawk/nui`. |
+| `toboshii/nui` | `keyboard-key-hook` | `db02f6c` | The upstream PR for the key hook, "Keep single keys from the game", stacked on `controller-pad-hook` (`79bb531`): its first four commits are that PR. Two commits of its own: the hook with its docs and Windows tests (`f66b72c`), and the Linux suite (`db02f6c`). Like the pad PR, it names KeyHook revisions instead of the fork's release numbers, has no release commit, and freezes `test/frozen/layout_keyhook.rev1.txt`. Its hook sources and tests match nui `8820af0` byte for byte. Open on `jintawk/nui` since 2026-11-27, waiting for review. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
 | both | `claude/controller-support-plan-yjc276` | Chronicle `867e46a`, nui `cf75bf8` | The branch before the rebase. Unchanged. `docs/test-findings-plan.md` §10 maps its hashes to the new ones. |
 

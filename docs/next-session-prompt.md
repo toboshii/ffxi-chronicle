@@ -90,9 +90,11 @@ first.
 
 In rough order. The handoff §6 has the detail.
 
-1. **The nui PRs.** Whichever of the two open PRs merges second needs a rebase onto upstream `main`, because both
-   add a CI step and a README paragraph in the same place. Do it when the user asks. The keyboard hook could be a
-   third PR, after the pad hook, because it shares the pad hook's style and the frozen check.
+1. **The nui PRs.** Three are open on `jintawk/nui`: HD texture packs, the pad hook, and the key hook
+   (`keyboard-key-hook`, stacked on the pad hook, so it shows the pad commits until that PR merges). The HD and pad
+   PRs add a CI step and a README paragraph in the same place, so whichever merges second needs a rebase onto
+   upstream `main`. If the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`. Do each when the user
+   asks.
 2. **After they merge:** Chronicle vendors an upstream nui release, and the fork's release numbers (1.3.0 to
    1.6.0) give way. Agree on that with the user. Then a Chronicle PR, only when the user asks.
 3. **The player's own key bindings** and **a main menu item** (`docs/test-findings-plan.md` §7). The research found
