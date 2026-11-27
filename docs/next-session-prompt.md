@@ -27,7 +27,7 @@ after it in section 5.
 |---|---|---|---|
 | Chronicle | `ccr-d3a8994b-5t63ba` | the commit that adds this prompt | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | nui | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3 (fork releases 1.3.0 to 1.5.0), the HD texture pack work. On upstream `main` `8b2e53c`. |
-| both | `claude/chronicle-workstreams-review-dp0k36` | Chronicle `fc19479`, nui `6b821c8` | The review branch, a few docs commits behind on Chronicle. |
+| both | `claude/chronicle-workstreams-review-dp0k36` | as `ccr-d3a8994b-5t63ba` when last fast-forwarded | The review branch. The user has it fast-forwarded to `ccr-d3a8994b-5t63ba` when they ask. |
 | nui | `controller-pad-hook` | `79bb531` | Open PR on `jintawk/nui`: "Read and hold the controller the game reads". |
 | nui | `hd-texture-packs` | `871a167` | Open PR on `jintawk/nui`: "Read the UI art from an HD texture pack". |
 
