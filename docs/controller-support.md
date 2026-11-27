@@ -1,8 +1,9 @@
 # Controller support: research and plan
 
 Status, 2026-11-26: **implemented**, on `claude/chronicle-workstreams-review-dp0k36` in both repositories. It
-ran in game once, on nui 1.3.0: navigation and taking the pad worked. Test build 2 (nui 1.5.0, `_chronicle.dll`
-2.1.4) has not run in game yet. `docs/controller-handoff.md` has the state of the work, and
+ran in game on nui 1.3.0, where navigation and taking the pad worked. Test build 2 (nui 1.5.0, `_chronicle.dll`
+2.1.4) works in game too, by the user's report of 2026-11-27, on the machine where the first build's hook
+refused. `docs/controller-handoff.md` has the state of the work, and
 `docs/test-findings-plan.md` has the fixes from the two test reports.
 
 Decisions taken:

@@ -11,7 +11,8 @@ Status, 2026-11-26:
   the `//cr pad` message (`dec423c`) and the docs. They are on the branch `ccr-d3a8994b-5t63ba` in both
   repositories, which continues from the review branch's heads. Section 5b lists what the build changed
   from the design in section 5.
-- Nothing from step 3 has run in game or on Windows yet.
+- Test build 2 works in game, by your report of 2026-11-27: every check of the retest list below passes.
+  nui's Windows pad and render suites pass on your machine too (§5b and the handoff's §4).
 
 This plan answers the test agent's first report of 2026-11-25 (`handover-controller-1.md`). Those tests
 ran on Windows 11 at 3840x2160, window type 6, with an HD `19.DAT`. Read this plan with
@@ -498,6 +499,8 @@ cannot change them without rewriting the messages, so this table is the key.
    player's real Confirm and Cancel.
 
 ### Retest with build 2 (step 3 and the mouse fix)
+
+Done, 2026-11-27. Items 1 to 7 work in game, by your report. Item 8 is in the handoff's §4.
 
 1. `//cr pad status`: `live at FFXiMain's XInput wrapper`.
 2. Start with no pad attached, then plug one in. Chronicle still takes the pad with L3 + R3.

@@ -13,9 +13,10 @@ great". Since then the work answered two test reports. nui 1.4.0 keeps the L3 + 
 nui 1.4.2 gives an HD texture pack's atlas its own cache key. nui 1.5.0 moves the pad hook to the client's
 own XInput wrapper, because the old hot patch of `xinput1_3.dll!XInputGetState` refused on the test
 machine. Chronicle vendors nui 1.5.0 in `_chronicle.dll` 2.1.4, and carries upstream's Chronicle 2.1.1
-mouse fix. **None of this has run in game since nui 1.3.0.** Test build 2 goes to the user with this
-document. Nothing is merged into either repository's main branch, and no pull request is open for this
-work.
+mouse fix. **Test build 2 works in game**, by the user's report of 2026-11-27, on the machine where the old
+hot patch refused: the hook reads through the client's wrapper, the chord no longer sits the player or turns
+the camera, and every check on the retest list passes. Nothing is merged into either repository's main
+branch, and no pull request is open for this work.
 
 ## 2. Repositories, branches, commits
 
@@ -151,7 +152,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | What | Status |
 |---|---|
 | In game: navigation, taking and giving back the pad | **Works**, by the user's report (nui 1.3.0 build) |
-| In game: route 1 (`live at FFXiMain's XInput wrapper`), the chord, the HD art, the mouse at UI Scale 1.5 | **Not yet run.** Test build 2 has all of it. |
+| In game, test build 2 (`_chronicle.dll` 2.1.4, nui 1.5.0), on the machine where route 0 refused | **Works**, by the user's report of 2026-11-27. `//cr pad status` says `live at FFXiMain's XInput wrapper`, at a different address on each launch (the client module moves, and the signature finds it). With Enable XInput off, it adds that the client has not loaded `xinputdll.dll` yet, and `//cr pad` says so. With a controller, `reads` goes up and the controller works. L3 + R3 takes the pad without sitting the player or moving the camera. An L3 tap still sits, and R3 held still changes the view. A pad plugged in after the start still works. The mouse lands right at UI Scale 1.5. The HD art draws at login with an addon on nui 1.2.10 loaded. |
 | Chronicle `test/test_pad.lua` | 100 passed, 0 failed |
 | Chronicle's CI suites (`test_doc`, `test_input`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,112 files compile) |
 | `test/test_screens.lua` | 18,395 passed, 4 failed. The same 4 fail on the base commit, because of the Linux environment: "resize saved the place", "place restored", "pictures in view to check", "a texture freed under a layout...". |
@@ -190,14 +191,7 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 
 ## 6. What is left, in rough order
 
-1. **Run test build 2 in game.** The list is in `docs/test-findings-plan.md` §10:
-   - `//cr pad status` says `live at FFXiMain's XInput wrapper`.
-   - Start with no pad attached, then plug one in. L3 + R3 still takes the pad.
-   - L3 + R3 takes and gives back the pad without sitting or changing the camera. An L3 tap still sits
-     the player. R3 held still switches the view, about 150 ms late.
-   - HD texture pack art draws correctly, at login too, with an addon on nui 1.2.10 loaded.
-   - At UI Scale 1.5, clicks, drags and resizes land where the cursor is.
-   - With Enable XInput off, `//cr pad` says so and does not take the pad.
+1. **Test build 2 in game: done.** Every check on the retest list works, by the user's report (§4).
 2. **Upstream's render test, for jintawk.** These come from the Windows run and are in upstream's test code,
    not in this branch:
    - `wt`'s frame crop hashes depend on the machine. 7 of 8 differ on the user's AMD iGPU with upstream's
