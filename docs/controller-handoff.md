@@ -4,7 +4,7 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-26.
+Last updated 2026-11-27.
 
 ## 1. State in one paragraph
 
@@ -15,8 +15,9 @@ own XInput wrapper, because the old hot patch of `xinput1_3.dll!XInputGetState` 
 machine. Chronicle vendors nui 1.5.0 in `_chronicle.dll` 2.1.4, and carries upstream's Chronicle 2.1.1
 mouse fix. **Test build 2 works in game**, by the user's report of 2026-11-27, on the machine where the old
 hot patch refused: the hook reads through the client's wrapper, the chord no longer sits the player or turns
-the camera, and every check on the retest list passes. Nothing is merged into either repository's main
-branch, and no pull request is open for this work.
+the camera, and every check on the retest list passes. Two pull requests are open on `jintawk/nui`: the HD
+texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
+Chronicle side has no pull request. The next piece of work is a keyboard driver (§6).
 
 ## 2. Repositories, branches, commits
 
@@ -25,7 +26,8 @@ branch, and no pull request is open for this work.
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | this document's commit | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
 | both | `claude/chronicle-workstreams-review-dp0k36` | Chronicle `fc19479`, nui `6b821c8` | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). On 2026-11-27 the user had the review branch fast-forwarded to that branch's heads in both repositories. Later commits are on `ccr-d3a8994b-5t63ba` only. |
-| `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR branch for the HD work (four commits, no release). The user opens that PR. |
+| `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
+| `toboshii/nui` | `controller-pad-hook` | `79bb531` | The upstream PR for the pad hook, "Read and hold the controller the game reads", on upstream `main` `8b2e53c`. Four commits: revision 1, revision 2, the Linux tests, revision 3. It has no release commit, no HD work and no `l_screen` comment fix. It names PadHook revisions instead of the fork's release numbers, and its frozen layout is `test/frozen/layout_padhook.rev1.txt`. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
 | both | `claude/controller-support-plan-yjc276` | Chronicle `867e46a`, nui `cf75bf8` | The branch before the rebase. Unchanged. `docs/test-findings-plan.md` §10 maps its hashes to the new ones. |
 
@@ -186,6 +188,13 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 - **A test zip for the user.** `git archive --format=zip --prefix=chronicle/ -o <zip> HEAD` from the
   Chronicle root. The user unzips it over `Windower/addons/chronicle`. The DLL and the Lua files must go
   together.
+- **Windows runs.** Wine does not start in the cloud container. The user's Windows machine ("Lego") runs a
+  Claude Code session named "Remote control". A cloud session can message it with `send_message`, after the
+  user allows that cloud session to reach their own computers (`confirm_repository_trust`). Lego has MSYS2
+  at `C:\msys64` with the 32-bit gcc 16.2 (`pacman -S mingw-w64-i686-gcc`), Lua 5.1.5 from LuaBinaries at
+  `C:\Program Files (x86)\Lua\5.1\` (it ships `lua5.1.exe`, so set `NUI_LUA` to it), and a plain copy of
+  `FFXiMain.dll` for `NUI_FFXI_COPY`. Windower 4 is at `C:\Windower4`, and the game install is stock. Ask
+  that session to check with the user before it installs anything.
 - **Commit style.** Both repositories use "area: a plain sentence" subjects (`pad:`, `nui 1.x.y:`,
   `docs:`), and wrapped bodies that say why. The author is Toboshii Nakama, with no trailers. `docs/` is
   in Chronicle's `.gitignore`, so files there are force-added (`git add -f`).
@@ -204,15 +213,29 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
      holds raw NUL bytes. `"\0\0\0\0IDAT"` would say the same.
    - gcc 16 warns that `random_merge_list` (`test_build.cpp:450`) and `check_merge` (`test_build.cpp:354`)
      are defined but not used. The merge checks still run, so they look like dead code.
-3. **The HD PR upstream** (the user opens it). After it merges, rebase the branch onto upstream `main`.
-   Git should skip the HD decode and the two picked commits as already applied. The 1.4.2 and 1.5.0
-   commits will conflict in `cache.hpp` and `abi.md`. The fork's release numbers (1.3.0 to 1.5.0) will not
-   match upstream's, so agree on them with the user first.
-4. **Pull requests** for the controller work, only when the user asks.
-5. **Next work** (`docs/test-findings-plan.md` §7): the keyboard driver in Lua, then key bindings, the
-   game's input mask, and a main menu item.
-6. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
+3. **The two nui pull requests, both open.** Both add a CI step and a README test paragraph in the same place
+   (`.github/workflows/build.yml` and `README.md`). Whichever merges second needs a rebase onto upstream
+   `main`, and `abi.md` merges cleanly. If the HD PR merges first, rebase `controller-pad-hook`. Answer
+   review comments on the user's behalf only when the user asks.
+4. **After both merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.5.0. The fork's
+   release numbers (1.3.0 to 1.5.0) give way to upstream's then, so agree on that with the user. DLLs built
+   on the fork's revisions 1 to 3 stay compatible with upstream's, because the bus and its frozen layout are
+   the same.
+5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
+   can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
+   prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
+6. **Next work: the keyboard driver.** `docs/next-session-prompt.md` is the brief for it. After it, from
+   `docs/test-findings-plan.md` §7: the player's own key bindings, the game's input mask, and a main menu
+   item.
+7. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
    resizing the window from the pad.
+8. **Small loose ends:**
+   - With Enable XInput off, the first field of the controller line in `//cr status` still reads "ready
+     (L3+R3)". `//cr pad` gives the right message, so this is cosmetic.
+   - nui's `example/README.md` says a straight copy of `FFXiMain.dll` will not do as `NUI_FFXI_COPY`. A plain
+     copy works for the 2026-11-02 client.
+   - The `l_screen` comment fix in `src/host.cpp` is only in the fork's 1.5.0, not in either pull request.
+   - `claude/hd-texture-packs` is stale. The user deletes it, because the proxy refuses branch deletes.
 
 ## 7. Facts from the research worth keeping
 
