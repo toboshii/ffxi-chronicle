@@ -19,7 +19,8 @@ the camera, and every check on the retest list passes. Two pull requests are ope
 texture pack work (`hd-texture-packs`) and the pad hook (`controller-pad-hook`). Upstream has merged neither yet. The
 Chronicle side has no pull request. The keyboard driver is built (`d4417ad`, §3). It passes its tests here, and the QA
 frame comparison on Lego finds only the new Settings row (§4). The player can now choose the controller chord
-(`1954955`, §3). It passes its tests here and is not tried in game yet.
+(`1954955`, §3). It passes its tests here and is not tried in game yet. The player can also have Cancel at the root
+hide the window (`cffc161`, auto-hide, §3). It passes its tests here and is not tried in game yet.
 
 ## 2. Repositories, branches, commits
 
@@ -62,7 +63,9 @@ Chronicle commits on the branch after test build 1:
 | `fb65dc1` | keys: the player chooses the nav key (test build 4) |
 | `62edb9f` | docs: the choosable nav key |
 | `1954955` | pad: the player chooses the controller chord |
-| this commit | docs: the choosable controller chord |
+| `30f58e7` | docs: the choosable controller chord |
+| `cffc161` | ui: Cancel at the root can hide the window (auto-hide) |
+| this commit | docs: auto-hide |
 
 Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, atlas format **4**.
@@ -141,7 +144,7 @@ Versions now: nui **1.5.0**, `_chronicle.dll` **2.1.4** (`plugin/ChronicleModule
 | `ui/window.lua` | The cursor, in the "controller" section at the bottom of the file: `pad_mode`, `cursor`, `cursor_key`, `cursor_zone`. The cursor is the hover, so the existing hover drawing shows it. `pad_draw` adds a frame, and the hint line is in the bottom margin. `pad_refind` runs after each layout. `pad_move` is spatial, crosses between head and body at the edges, and steps by a third of the viewport on sparse pages. A mouse move of more than 3 px over the window gives the hover back to the mouse. |
 | `core/app.lua` | `App:go` pushes `cursor = win.cursor_key` onto the stack, and `App:back` passes it to `on_change`, then `set_screen`. |
 | `chronicle.lua` | The section "The controller": `padc`, `pad_read_config`, `pad_join`, `pad_take`, `pad_give`, `pad_act`, `pad_tick` (run from `prerender`), `pad_no_shim`. |
-| `ui/screens/settings.lua` | The rows "Controller", "Controller buttons", "Keyboard" and "Keyboard key". |
+| `ui/screens/settings.lua` | The rows "Controller", "Controller buttons", "Keyboard", "Keyboard key" and "Hide on Back". |
 | `ui/keys.lua` | Also tracks Ctrl and Alt (`keys.shift()`, `keys.ctrl_alt()`), for the keyboard driver. |
 | `chronicle.lua`, "The keyboard" | `kbd`, `KEY_ACT`, `kbd_take`, `kbd_give`, `kbd_down`, `kbd_tick`, `kbd_reset`. The `keyboard` event runs the search box first, then the driver. |
 | `README.md` | The section "With a controller", and the controller paragraph of "The native layer". |
@@ -225,6 +228,25 @@ The controller chord (`1954955`) does this:
   buttons, so the chord still held does not take the pad. A lapsed hold is taken again during the wait.
 - **Command:** `//cr pad chord [name]` names the chord, or sets it.
 
+Auto-hide (`cffc161`) does this:
+- **The setting.** `settings.auto_hide` (default `false`, per character). With it off, nothing changes.
+- **Where it acts.** Only in `nav_act`'s `cancel` branch, where `win:pad_back()` returns `'root'`. That is the pad's
+  Cancel (B, or the game's own Cancel from its pad config), or Escape or Backspace from the keyboard. With the setting
+  on, that branch calls `hide()` instead of the input's own `give`. `hide()` calls `pad_give` and `kbd_give`, so both
+  inputs go back, also when only one of them pressed Cancel. No window stays to hold them, so both must go back.
+- **What does not hide.** A Cancel that closes a picture, leaves the search box or goes back a screen (`pad_back`
+  returns nil). The chord and the nav key (`toggle`, `kbd_give`), `//cr pad`, `//cr nav`, and Escape or Cancel while a
+  Settings row waits for a key or for two buttons. Those paths never reach the `cancel` branch.
+- **The pad's press rule.** Nothing new in Lua. `pad_give` calls `pad_capture(false)` while Cancel is still down. The
+  hook keeps a press made under the capture hidden until its release, so the game never sees that Cancel. The hook
+  must stay installed for this, so the hide must not call `pad_stop`.
+- **The keyboard's press rule.** Nothing new in Lua either. `kbd_give` calls `kbd_block`, which waits while a key is
+  down (`kbd.ndown`). So `keyboard_blockinput 0` goes out with the Escape or Backspace release, not at the hide.
+- **After the hide.** The chord and the nav key show a hidden window and take their input, as before.
+- **The row and the command.** The Settings row "Hide on Back" (On or Off) follows "Keyboard key", at the end of the
+  input rows. So only "Place and size" moves down 34 px. "Back" is the word the hint line uses for Cancel ("B Back",
+  "Bksp Back"). `//cr autohide` toggles it, and `//cr autohide on|off` sets it. No other command had that name.
+
 Button layout: the D-pad or left stick moves the cursor. A is Confirm and B is Cancel, unless the game's
 config says otherwise. LB/RB change section, LT/RT page, the right stick scrolls, X is Sort, Y is Show,
 Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes or gives back the pad.
@@ -241,6 +263,8 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | In game: the keyboard driver, build 1 (`d4417ad`) | K takes and gives back the keys, and the cursor moves. **But the game still got every key**, as above. |
 | Chronicle `test/test_chord.lua` (new at `1954955`, in CI) | 99 passed, 0 failed. CHORD-1 the setting and the command, CHORD-2 the parser, CHORD-3 its refusals, CHORD-4 the fallback, CHORD-5 the edge test and the decoder's toggle, CHORD-6 the hook's mask, CHORD-7 the hint, status, chat and Settings text and the conflict check, CHORD-8 R3 and Top, CHORD-9 to CHORD-14 the Settings row (two buttons, Escape, Cancel, the timeout, a refused pair, not joined), CHORD-15 the held-button rules around the wait. 39 rules were removed in turn, and each made a named check fail. Removing the D-pad, trigger or unknown-name refusal also stops the run in the command check, because the sort then compares a nil rank. `test_pad` 100 and `test_keys` 139 still pass unchanged. |
 | In game: the choosable controller chord (`1954955`) | Not tried yet. |
+| Chronicle `test/test_autohide.lua` (new at `cffc161`, in CI) | 94 passed, 0 failed. HIDE-1 the setting, its default, the row and a saved value, HIDE-2 off as before, HIDE-3 the pad's Cancel hides (also the game's own Cancel on A), HIDE-4 Escape and Backspace hide, HIDE-5 a Cancel that goes back, closes a picture or leaves the search box does not, HIDE-6 the chord, the nav key, the commands and the waiting Settings rows do not, HIDE-7 the pad's Cancel stays from the game until its release (the test models the hook's rule), HIDE-8 the keyboard block lifts only with the key's release, HIDE-9 both inputs held, HIDE-10 showing again, HIDE-11 the command and the help line. 22 rules were removed or broken in turn, and each made a named check fail. `test_pad` 100, `test_keys` 139 and `test_chord` 99 still pass unchanged. `test_screens` gives 18,395 passed and the same 4 Linux failures as before. |
+| In game: auto-hide (`cffc161`) | Not tried yet. |
 | In game: build 4 (`fb65dc1`), the choosable key | Not tried yet. The test zip is `chronicle-keys-test4.zip`. `test_keys` has 139 checks, and each rule of the key was removed in turn and caught. |
 | In game: the keyboard driver, build 2 (`5a47e40`) and build 3 (`542afb6`, on a second machine) | **Works**, by the user's report of 2026-11-27. Every check passes: the arrows and Page Up/Down no longer move the camera, a letter typed in the search box opens no game menu, and the game gets its keys back as soon as Chronicle gives them back. One limit: under the block, Windower runs no bind, so a bind for `//cr nav` starts nav mode but cannot end it. K, and Escape or Backspace at the root, still end it. The README says so. |
 | Chronicle's CI suites at `d4417ad` (`test_doc`, `test_input`, `test_keys`, `test_mission_words`, `test_steps`, `test_roe`, `test_complete_strip`, `test_progress_ui`, `test_progress_lists`, `test_pages`) and `test/syntax_check.lua` | All pass (3,113 files compile) |
