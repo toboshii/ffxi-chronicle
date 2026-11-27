@@ -24,7 +24,7 @@ branch, and no pull request is open for this work.
 |---|---|---|---|
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | this document's commit | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
 | `toboshii/nui` | `ccr-d3a8994b-5t63ba` | `6b821c8` | PadHook revisions 1 to 3, the HD decode and its fixes. On upstream `main` `8b2e53c` (nui 1.2.10 plus CI and docs). |
-| both | `claude/chronicle-workstreams-review-dp0k36` | Chronicle `e42d0c8`, nui `d8d94e5` | The same work up to test build 1. The 2026-11-26 session continued from these heads on its own branch, `ccr-d3a8994b-5t63ba`. |
+| both | `claude/chronicle-workstreams-review-dp0k36` | the same heads as `ccr-d3a8994b-5t63ba` | The review branch. The 2026-11-26 session worked on `ccr-d3a8994b-5t63ba`, from the review branch's heads then (Chronicle `e42d0c8`, nui `d8d94e5`). On 2026-11-27 the user had the review branch fast-forwarded to it in both repositories. |
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR branch for the HD work (four commits, no release). The user opens that PR. |
 | `toboshii/nui` | `claude/hd-texture-packs` | `871a167` | A stale copy. The user deletes it. Do not use it. |
 | both | `claude/controller-support-plan-yjc276` | Chronicle `867e46a`, nui `cf75bf8` | The branch before the rebase. Unchanged. `docs/test-findings-plan.md` §10 maps its hashes to the new ones. |
