@@ -5,14 +5,15 @@ Fantasy XI) and `toboshii/nui` (the drawing library that Chronicle vendors in `p
 `jintawk/*`. A third repository, `toboshii/ffxi-private`, holds the client's saved image and the research tools. Keep
 it private.
 
-The big pieces are done and work in game: the controller, the keyboard driver, nui's key hook, and the warning when
-the player's nav key is also a game key. Nothing is urgent. Most of what is left waits on upstream or on the user, so
-**ask the user what they want first.** Do not start a piece of work they have not chosen.
+The big pieces work in game. They are the controller, the keyboard driver, nui's key hook, and a warning when the
+player's nav key is also a game key. Nothing is urgent. Most of what is left waits on upstream or on the user, so
+**ask the user what they want first.** Start only the work they choose.
 
 ## 1. Read these first, in this order
 
-1. `docs/controller-handoff.md` (Chronicle). It is the current state: branches, commits, the architecture, every
-   test result, how to work in the container and on the user's Windows machine, and what is left (§6).
+1. `docs/controller-handoff.md` (Chronicle). It gives the current state: branches, commits, the architecture and
+   every test result. It also says how to work in the container and on the user's Windows machine, and what is left
+   (§6).
 2. `docs/key-bindings-research.md` and `docs/main-menu-research.md`, the two research notes of the last session.
 3. For the work the user picks: the files that §3 and §6 of the handoff name.
 
