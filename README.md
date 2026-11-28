@@ -223,9 +223,15 @@ K is the default nav key. To use another key, click "Keyboard key" on the Settin
 want, with Ctrl, Alt or Shift if you like. Escape keeps the old key.
 
 `//cr nav key <name>` does the same, for example
-`//cr nav key ctrl+n` or `//cr nav key f10` (Windower's `^n` works too). An arrow key, Enter or another key that
+`//cr nav key g` or `//cr nav key ctrl+g` (Windower's `^g` works too). An arrow key, Enter or another key that
 moves the cursor needs Ctrl, Alt or Shift with it. The hint line and the rest of this section then mean your key
 where they say K.
+
+Chronicle keeps its nav key from the game, also while it does not have the keys. So choose a key the game does not
+use. When you set a key, Chronicle reads the game's own key bindings, from `_chronicle.dll` 2.1.6. If the game also
+uses that key, Chronicle still sets it, and a chat line names what the game does with it. With the stock bindings,
+G and O are free. K is free too, unless you use a keyboard mode where letters do not open the chat line. In those
+modes the game uses W, A, S, D, I, J, K and L to move and to turn the camera.
 
 `//cr nav` also does what K does, so a Windower `bind` for `//cr nav` takes the keys and gives them back. Without the
 hook, Windower runs no bind while Chronicle has the keys, so there the bind cannot give them back. With `//cr nav off`,

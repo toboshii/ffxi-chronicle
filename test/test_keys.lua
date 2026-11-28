@@ -601,6 +601,116 @@ do
     check('HOOK-17: joined after it', env.N.key_joined and env.N.key_starts == 2 and env.N.key_hidden[K])
 end
 
+---------------------------------------------------------------------------------------------------------------------------
+-- the game's own uses of the nav key (nui 1.7.0's key_bindings, decoded by ui/keybinds.lua). The player's choice: warn and
+-- keep the key, and only when the key is set (the command and the Settings row).
+local KB = require('ui/keybinds')
+local STOCK = dofile('test/fixtures/key_bindings_20261102.lua')
+local function with(t, extra) local c = {} for k, v in pairs(t) do c[k] = v end for k, v in pairs(extra or {}) do c[k] = v end return c end
+local function k_(dik, m) m = m or '' return {dik = dik, ctrl = m:find('c') ~= nil, alt = m:find('a') ~= nil, shift = m:find('s') ~= nil} end
+do
+    local Y = 0x15
+    check('BIND-1: no rule: any modifiers', KB.action_hits(0x0015, k_(Y)) and KB.action_hits(0x0015, k_(Y, 'cas')))
+    check('BIND-1: another key, or an empty binding, is no hit', not KB.action_hits(0x0016, k_(Y)) and not KB.action_hits(0x8000, k_(0)))
+    check('BIND-2: 0x80 neither Ctrl nor Alt', KB.action_hits(0x8015, k_(Y, 's')) and not KB.action_hits(0x8015, k_(Y, 'c'))
+        and not KB.action_hits(0x8015, k_(Y, 'a')))
+    check('BIND-2: 0x01 Shift', KB.action_hits(0x0115, k_(Y, 's')) and not KB.action_hits(0x0115, k_(Y)))
+    check('BIND-2: 0x02 Ctrl', KB.action_hits(0x0215, k_(Y, 'c')) and not KB.action_hits(0x0215, k_(Y, 'a')))
+    check('BIND-2: 0x04 Alt', KB.action_hits(0x0415, k_(Y, 'a')) and not KB.action_hits(0x0415, k_(Y, 'c')))
+    check('BIND-2: 0x08 Ctrl and Alt', KB.action_hits(0x0815, k_(Y, 'ca')) and not KB.action_hits(0x0815, k_(Y, 'c')))
+    check('BIND-2: 0x10 Ctrl or Alt', KB.action_hits(0x1015, k_(Y, 'c')) and KB.action_hits(0x1015, k_(Y, 'a'))
+        and not KB.action_hits(0x1015, k_(Y)))
+    check('BIND-2: 0x20 not Shift', KB.action_hits(0x2015, k_(Y)) and not KB.action_hits(0x2015, k_(Y, 's')))
+    check('BIND-2: 0x40 changes nothing (no hiding while the chat line is open)', KB.action_hits(0x4015, k_(Y)))
+    check('BIND-2: all rules must hold (0x11: Shift and Ctrl or Alt)', KB.action_hits(0x1115, k_(Y, 'sc'))
+        and not KB.action_hits(0x1115, k_(Y, 'c')) and not KB.action_hits(0x1115, k_(Y, 's')))
+    -- the movement rules, in the client's order
+    check('BIND-3: rule 0 with no modifier', KB.move_hits(0x040025, k_(K)))
+    check('BIND-3: rule 0 with Ctrl, unless a shortcut key', KB.move_hits(0x040025, k_(K, 'c'), false)
+        and not KB.move_hits(0x040025, k_(K, 'c'), true))
+    check('BIND-3: rule 8 not Shift, rule 4 Shift', KB.move_hits(0x060825, k_(K)) and not KB.move_hits(0x060825, k_(K, 's'))
+        and KB.move_hits(0x060425, k_(K, 's')) and not KB.move_hits(0x060425, k_(K)))
+    check('BIND-3: rule 1 Ctrl, rule 2 Alt', KB.move_hits(0x040125, k_(K, 'c')) and not KB.move_hits(0x040125, k_(K, 'a'))
+        and KB.move_hits(0x040225, k_(K, 'a')) and not KB.move_hits(0x040225, k_(K)))
+    check('BIND-3: rule 7 any', KB.move_hits(0x040725, k_(K)) and KB.move_hits(0x040725, k_(K, 'ca')))
+    check('BIND-3: rules 4 and 8 need no Ctrl or Alt', not KB.move_hits(0x060825, k_(K, 'c')) and not KB.move_hits(0x060425, k_(K, 'as')))
+    -- the layouts
+    check('BIND-4: layout 2 swaps Y and Z before the game reads them', KB.game_code(0x15, 2) == 0x2C and KB.game_code(0x2C, 2) == 0x15)
+    check('BIND-4: layout 3 swaps A and Q', KB.game_code(0x10, 3) == 0x1E and KB.game_code(0x1E, 3) == 0x10)
+    check('BIND-4: layout 0 and other keys stay', KB.game_code(0x15, 0) == 0x15 and KB.game_code(K, 2) == K and KB.game_code(K) == K)
+    -- the stock tables (the saved image)
+    local u = KB.uses(STOCK, k_(K))
+    check('BIND-5: stock K, mode unknown: free', u and #u == 0, u and table.concat(u, '; '))
+    u = KB.uses(with(STOCK, {mode = 0}), k_(K))
+    check('BIND-5: stock K in mode 0: free (the movement keys do nothing)', u and #u == 0, u and table.concat(u, '; '))
+    u = KB.uses(with(STOCK, {mode = 2}), k_(K))
+    check('BIND-5: stock K in mode 2: a movement or camera key', u and #u == 1 and u[1]:find('movement', 1, true), u and table.concat(u, '; '))
+    u = KB.uses(with(STOCK, {mode = 1}), k_(K, 's'))
+    check('BIND-5: stock Shift+K in mode 1 too', u and #u == 1, u and table.concat(u, '; '))
+    u = KB.uses(STOCK, k_(Y, 'c'))
+    check('BIND-6: stock Ctrl+Y: Confirm (named), once', u and #u >= 1 and u[1] == 'Confirm (game action 14)', u and table.concat(u, '; '))
+    u = KB.uses(STOCK, k_(Y))
+    check('BIND-6: stock plain Y: no action (its shortcut needs Ctrl or Alt)', u and #u == 0, u and table.concat(u, '; '))
+    u = KB.uses(STOCK, k_(0x02, 'c'))
+    check('BIND-6: Ctrl+1 is Ctrl macro 1', u and u[1] == 'Ctrl macro 1 (game action 109)', u and table.concat(u, '; '))
+    u = KB.uses(STOCK, k_(0x20))
+    check('BIND-6: stock D: game action 166 (a binding with no rule)', u and #u == 1 and u[1] == 'game action 166', u and table.concat(u, '; '))
+    u = KB.uses(STOCK, k_(0x22))
+    check('BIND-6: stock G: free', u and #u == 0, u and table.concat(u, '; '))
+    u = KB.uses(with(STOCK, {layout = 2}), k_(0x2C, 'c'))
+    check('BIND-6: layout 2: the key marked Z (Y\'s code) is Confirm with Ctrl', u and u[1] == 'Confirm (game action 14)', u and table.concat(u, '; '))
+    check('BIND-6: no table: nil', KB.uses(nil, k_(K)) == nil)
+    u = KB.uses({actions = {0x0025, 0x8025, 0x0000, 0x0000, 0x0000, 0x0025}}, k_(K))
+    check('BIND-6: one action with two bindings on the key: named once', u and #u == 2 and u[1] == 'game action 0'
+        and u[2] == 'game action 1', u and table.concat(u, '; '))
+end
+local function warned(env, from) return table.concat(env.chat, '\n', from + 1):find('the game also uses', 1, true) ~= nil end
+do
+    local env, win, app = shown({fake = {key = true, binds = with(STOCK, {mode = 2})}})
+    check('BIND-10: nothing read and no warning at load', env.N.binds_reads == 0 and not warned(env, 0))
+    local lines = #env.chat
+    env.cmd('nav', 'key', 'ctrl+y')
+    check('BIND-7: a key the game uses: set (warn and keep)', app.settings.nav_key == 'ctrl+y', app.settings.nav_key)
+    check('BIND-7: and warned, with the action', warned(env, lines) and chat_has(env, 'Confirm (game action 14)'))
+    check('BIND-7: the warning names the way to a free key', chat_has(env, 'nav key <name>'))
+    lines = #env.chat
+    env.cmd('nav', 'key', 'g')
+    check('BIND-8: a free key: no warning', app.settings.nav_key == 'g' and not warned(env, lines) and chat_has(env, 'G takes the keys'))
+    lines = #env.chat
+    env.cmd('nav', 'key', 'k')
+    check('BIND-7: the default K in mode 2 warns', warned(env, lines) and chat_has(env, 'movement or camera key'))
+    lines = #env.chat
+    env.cmd('nav', 'status')
+    env.cmd('status')
+    check('BIND-10: no warning in the status', not warned(env, lines))
+    -- the Settings row: the next key pressed
+    app:go('settings', {}, 0)
+    app.prefs.change('nav_key')
+    env.frame()
+    lines = #env.chat
+    key(env, LCTRL, true)
+    tap(env, 0x15)
+    key(env, LCTRL, false)
+    check('BIND-9: the Settings row: set and warned', app.settings.nav_key == 'ctrl+y' and warned(env, lines), app.settings.nav_key)
+    app.prefs.change('nav_key')
+    lines = #env.chat
+    tap(env, 0x22)
+    check('BIND-9: the Settings row, a free key: no warning', app.settings.nav_key == 'g' and not warned(env, lines))
+    check('BIND-9: the hook hides the new key as before', (function() env.frame() return env.N.key_hidden[0x22] end)())
+    app.prefs.change('nav_key')
+    lines = #env.chat
+    tap(env, F10)
+    check('BIND-9: F10 targets in the game (game action 82): warned', app.settings.nav_key == 'f10' and warned(env, lines)
+        and chat_has(env, 'game action 82'))
+end
+for _, case in ipairs({{'no key_bindings in the DLL', {key = true, no_binds = true}}, {'nui refused the tables', {key = true, binds = false}}}) do
+    local env, _, app = shown({fake = case[2]})
+    local lines = #env.chat
+    env.cmd('nav', 'key', 'ctrl+y')
+    check('BIND-11: ' .. case[1] .. ': set, no warning', app.settings.nav_key == 'ctrl+y' and not warned(env, lines)
+        and chat_has(env, 'Ctrl+Y takes the keys'))
+end
+
 restore()
 print(('test_keys: %d passed, %d failed'):format(pass, fail))
 os.exit(fail == 0 and 0 or 1)

@@ -154,6 +154,16 @@ function H.fake_native(opts)
         end
         function N.key_stop() N.key_joined, N.key_hidden, N.key_list = false, {}, {} return 'stopped' end
     end
+    -- the client's keyboard bindings (nui 1.7.0). opts.binds: the table key_bindings returns (default: no bindings at all);
+    -- false: nui refused the tables (nil and why). opts.no_binds: the function is missing (an older DLL). N.binds_reads: calls.
+    N.binds_reads = 0
+    if not opts.no_binds then
+        function N.key_bindings()
+            N.binds_reads = N.binds_reads + 1
+            if opts.binds == false then return nil, "FFXiMain's key bindings were not found (fake)" end
+            return opts.binds or {actions = {}, categories = {}, moves = {}}
+        end
+    end
     return N
 end
 

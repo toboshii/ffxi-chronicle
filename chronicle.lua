@@ -55,6 +55,7 @@ local App = require('core/app')
 local places = require('core/places')
 local ops = require('ui/ops')
 local keys = require('ui/keys')
+local keybinds = require('ui/keybinds')
 local pad = require('ui/pad')
 local Window = require('ui/window')
 local screens = {
@@ -605,13 +606,33 @@ local function kbd_set_key(name)
     return k
 end
 
+-- What the game does with key k, from nui's copy of the client's bindings (nui 1.7.0). -> a list of strings, or nil when
+-- the game does nothing with it or the bindings cannot be read (an older DLL, or nui refused the tables).
+local function kbd_game_uses(k)
+    -- no function (an older DLL): pcall gives false and a message; refused: nil and why. keybinds.uses gives nil for
+    -- anything but a table.
+    local _, b = pcall(nui.N and nui.N.key_bindings)
+    local u = keybinds.uses(b, k)
+    return u and #u > 0 and u or nil
+end
+
+-- the chat lines for a new nav key: it is set, and (the player's choice: warn and keep it) what the game loses
+local function kbd_say_set(k)
+    say('keyboard: ' .. k.label .. ' takes the keys')
+    local u = kbd_game_uses(k)
+    if u then
+        say('keyboard: the game also uses ' .. k.label .. ' (' .. table.concat(u, ', ') .. '). Chronicle keeps ' .. k.label
+            .. ' from the game. For a free key: //' .. ident.short .. ' nav key <name>', 167)
+    end
+end
+
 -- the Settings row "Keyboard key": the next key pressed (with its modifiers) is the nav key; Escape keeps the old one
 local function kbd_capture(dik)
     kbd.capture = false
     if dik ~= KEY_ESC then
         local name = keys.name_now(dik)
         local k, why = kbd_set_key(name or '')
-        if k then say('keyboard: ' .. k.label .. ' takes the keys') else say('keyboard: ' .. (why or 'that key has no name'), 167) end
+        if k then kbd_say_set(k) else say('keyboard: ' .. (why or 'that key has no name'), 167) end
     end
     if win then win:invalidate('all') win:flush() end
 end
@@ -1249,7 +1270,7 @@ windower.register_event('addon command', function(...)
         if a == 'key' then
             if not b then say('keyboard: ' .. kbd_key().label .. ' takes the keys (//' .. ident.short .. ' nav key <name>)') return end
             local k, why = kbd_set_key(table.concat(args, ' ', 3))
-            if k then say('keyboard: ' .. k.label .. ' takes the keys') else say('keyboard: ' .. why, 167) end
+            if k then kbd_say_set(k) else say('keyboard: ' .. why, 167) end
             if win and app.view.name == 'settings' then win:invalidate('all') win:flush() end
         elseif a == 'on' or a == 'off' then
             settings.nav = a == 'on'
