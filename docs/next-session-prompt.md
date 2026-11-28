@@ -21,14 +21,15 @@ player's nav key is also a game key. Nothing is urgent. Most of what is left wai
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| Chronicle | `claude/new-session-3mgx68` | the commit that adds this prompt | Everything so far: nui 1.7.0 vendored, `_chronicle.dll` 2.1.6, Chronicle 2.2.0, the docs. On upstream `master` `338643d`. |
-| nui | `claude/new-session-3mgx68` | `8895b87` | PadHook revisions 1 to 3, the HD texture pack work, KeyHook 1, `key_bindings()` (fork releases 1.3.0 to 1.7.0). On upstream `main` `8b2e53c`. |
+| Chronicle | `claude/new-session-07e3om` | the commit that updates this prompt | Everything so far: nui 1.7.0 vendored, `_chronicle.dll` 2.1.6, Chronicle 2.2.0, the docs. On upstream `master` `338643d`. |
+| nui | `claude/new-session-07e3om` | `8895b87` | PadHook revisions 1 to 3, the HD texture pack work, KeyHook 1, `key_bindings()` (fork releases 1.3.0 to 1.7.0). On upstream `main` `8b2e53c`. |
+| nui | `keyboard-bindings` | `563dcc4` | **Not raised, by the user's choice.** A PR branch for `key_bindings()`, stacked on `keyboard-key-hook`. |
 | nui | `keyboard-key-hook` | `db02f6c` | Open PR on `jintawk/nui`: "Keep single keys from the game", stacked on `controller-pad-hook`. |
 | nui | `controller-pad-hook` | `79bb531` | Open PR on `jintawk/nui`: "Read and hold the controller the game reads". |
 | nui | `hd-texture-packs` | `871a167` | Open PR on `jintawk/nui`: "Read the UI art from an HD texture pack". |
 
-Continue from `claude/new-session-3mgx68`'s heads. If your session assigns a different branch, create it from those
-heads. Do not change the three PR branches unless the user asks.
+Continue from `claude/new-session-07e3om`'s heads. If your session assigns a different branch, create it from those
+heads. Do not change the four PR branches unless the user asks.
 
 ## 3. What is left (the handoff's §6 has the detail)
 
@@ -36,9 +37,11 @@ heads. Do not change the three PR branches unless the user asks.
    whichever merges second needs a rebase onto upstream `main`. `keyboard-key-hook` shows the pad commits until the
    pad PR merges. If the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`. The session cannot read
    `jintawk/nui`, so the user pastes review comments.
-2. **A PR for `key_bindings()`.** It is only in the fork's nui 1.7.0. An upstream PR needs its own branch (no
-   `claude/` or `agent/` prefix, no `docs/` plans, no release commit), probably stacked on `keyboard-key-hook`. Open
-   it only when the user asks.
+2. **`key_bindings()` stays out of upstream, by the user's choice.** It is only in the fork's nui 1.7.0. Its PR
+   branch `keyboard-bindings` is built and pushed, but the user chose not to raise it. They think it is too complex
+   for a warning about a key the player can easily change. They may raise it later, or never. Do not open it unless
+   the user asks. Build all new work so that it does not need `key_bindings()`. Chronicle already works without it,
+   and its tests check that. The handoff's §6 item 4 has the rules.
 3. **After upstream merges:** Chronicle vendors an upstream nui release, and the fork's release numbers (1.3.0 to
    1.7.0) give way. Agree on that with the user. Then a Chronicle PR, only when the user asks.
 4. **Optional, only if the user asks for one:**

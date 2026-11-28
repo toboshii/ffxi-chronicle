@@ -4,8 +4,9 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-28, at the end of the key bindings session (`claude/new-session-3mgx68`). The user paused the
-work there. `docs/next-session-prompt.md` is the brief for whoever picks it up.
+Last updated 2026-11-28, at the end of the session on `claude/new-session-07e3om`. That session built the
+`keyboard-bindings` branch for an upstream PR of `key_bindings()`. The user then chose not to raise that PR (§6 item
+4). `docs/next-session-prompt.md` is the brief for whoever picks it up.
 
 ## 1. State in one paragraph
 
@@ -30,14 +31,16 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 built** (nui 1.7.0 `8186073`, Chronicle `b2ccfbb`, `docs/key-bindings-research.md`). The client rewrites its binding
 tables at run time, so nui reads them live with `key_bindings()`, and Chronicle warns when a new nav key is also a game
 key. The Linux and Windows tests pass, and test build 1 works in game (§4). The main menu item is researched and
-stopped by the user's choice (§6 item 2): a game macro with `/con cr show` opens Chronicle instead. What is left is §6
+stopped by the user's choice (§6 item 2): a game macro with `/con cr show` opens Chronicle instead. `key_bindings()`
+is only in the fork. Its upstream PR is built but not raised, by the user's choice, and it may never merge (§6 item 4). What is left is §6
 items 3 onward, and none of it is urgent. Most of it waits on upstream or on the user.
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `claude/new-session-3mgx68` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the key bindings research, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6, the warning, the main menu research and the README's macro paragraph. |
+| both | `claude/new-session-07e3om` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The session of 2026-11-28 that built the `keyboard-bindings` PR branch, from `claude/new-session-3mgx68`'s heads. It changes only this document and `docs/next-session-prompt.md`. The nui branch has no new commits. |
+| both | `claude/new-session-3mgx68` | Chronicle: `9cd8ba8`. nui: `8895b87` | The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the key bindings research, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6, the warning, the main menu research and the README's macro paragraph. |
 | both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
 | both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `b24f027` (fast-forwarded on 2026-11-27) | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the keyboard work, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
@@ -46,6 +49,7 @@ items 3 onward, and none of it is urgent. Most of it waits on upstream or on the
 | `toboshii/nui` | `hd-texture-packs` | `871a167` | The upstream PR for the HD work: four commits, no release. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `controller-pad-hook` | `79bb531` | The upstream PR for the pad hook, "Read and hold the controller the game reads", on upstream `main` `8b2e53c`. Four commits: revision 1, revision 2, the Linux tests, revision 3. It has no release commit, no HD work and no `l_screen` comment fix. It names PadHook revisions instead of the fork's release numbers, and its frozen layout is `test/frozen/layout_padhook.rev1.txt`. Open on `jintawk/nui`, waiting for review. |
 | `toboshii/nui` | `keyboard-key-hook` | `db02f6c` | The upstream PR for the key hook, "Keep single keys from the game", stacked on `controller-pad-hook` (`79bb531`): its first four commits are that PR. Two commits of its own: the hook with its docs and Windows tests (`f66b72c`), and the Linux suite (`db02f6c`). Like the pad PR, it names KeyHook revisions instead of the fork's release numbers, has no release commit, and freezes `test/frozen/layout_keyhook.rev1.txt`. Its hook sources and tests match nui `8820af0` byte for byte. Open on `jintawk/nui` since 2026-11-27, waiting for review. |
+| `toboshii/nui` | `keyboard-bindings` | `563dcc4` | **Not raised.** A PR branch for `key_bindings()`, stacked on `keyboard-key-hook` (`db02f6c`). Two commits: the read with its docs (`1c47f2b`), and the Linux and Windows tests with their CI steps (`563dcc4`). No release commit and no version labels. Its code matches nui `8895b87`, except that the Linux test takes the saved image as an argument or in `NUI_FFXI_IMAGE` instead of a path into `ffxi-private`. The fork keeps that path. The user chose not to raise the PR (§6 item 4). Do not open it unless the user asks. Its description is not in a repository: write it again from the commits if the user asks. |
 | both | `claude/controller-support-plan-yjc276` | Chronicle `867e46a`, nui `cf75bf8` | The branch before the rebase. Unchanged. `docs/test-findings-plan.md` §10 maps its hashes to the new ones. |
 
 nui commits on the branch, oldest first:
@@ -453,10 +457,20 @@ camera when K takes the keys, until it is let go. The user chose to keep that ru
    the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`. Answer review comments on the user's behalf
    only when the user asks. This session cannot read `jintawk/nui`: the user pastes the comments.
 4. **After they merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.7.0. The fork's
-   release numbers (1.3.0 to 1.7.0) give way to upstream's then, so agree on that with the user. `key_bindings()`
-   (nui 1.7.0, `src/KeyBinds/`, `src/binds.*`) is in no pull request yet. It needs its own upstream PR, with no
-   release commit, before Chronicle can drop the fork. DLLs built on the
+   release numbers (1.3.0 to 1.7.0) give way to upstream's then, so agree on that with the user. DLLs built on the
    fork's revisions stay compatible with upstream's, because the buses and their frozen layouts are the same.
+   **`key_bindings()` is not in any pull request, and that is the user's choice.** Its PR branch `keyboard-bindings`
+   (§2) is built and pushed, but not raised. The user thinks the read is too complex for what it gives: a warning
+   about a key the player can easily change. They may raise it later, or never. So:
+   - Chronicle must work on an upstream nui that has no `key_bindings()`. It already does. `chronicle.lua` calls it
+     under `pcall` and gives no warning without it. `test_keys.lua` checks a DLL without the function and a DLL whose
+     read refused. Keep both checks.
+   - When Chronicle vendors upstream nui, the nav key warning goes away until the PR merges. Tell the user that
+     before the sync. Do not hold the sync back for it.
+   - Build all new work so that it does not need `key_bindings()` or anything else in `keyboard-bindings`. Put no new
+     code in `src/KeyBinds/` or `src/binds.*` and add no callers that need them. A new feature that would use the
+     bindings must also work fully without them.
+   - If upstream changes under `keyboard-bindings`, rebase it only when the user asks to raise the PR.
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks. Chronicle must first vendor an
    upstream nui release that has the pad hook and the key hook. Use a new branch with no `claude/` or
    `agent/` prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
