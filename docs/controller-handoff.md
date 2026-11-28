@@ -28,7 +28,8 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 **keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4). **The player's key bindings are
 built** (nui 1.7.0 `8186073`, Chronicle `b2ccfbb`, `docs/key-bindings-research.md`). The client rewrites its binding
 tables at run time, so nui reads them live with `key_bindings()`, and Chronicle warns when a new nav key is also a game
-key. The Linux tests pass. The Windows stand-in test and the game test are next (§4).
+key. The Linux and Windows tests pass, and test build 1 works in game (§4). The next piece of work is a "Chronicle"
+item in the game's main menu (§6 item 2).
 
 ## 2. Repositories, branches, commits
 
@@ -357,10 +358,10 @@ Since 2026-11-28, the key bindings:
 | What | Status |
 |---|---|
 | nui `sh test/binds_linux/run.sh --self-test` (32-bit Linux, `8186073`) | 58 passed: the eight signatures over the client's real bytes, every refusal, the places, the copy, and a scan of the whole saved image from `toboshii/ffxi-private` (one match each, the layout twice, the tables at `0x1036E6E8` and `0x1036F128`, 42 movement entries). 4 faults caught (FIRST_MATCH, NO_AGREE, NO_PLACE, MOVE_ALL). |
-| nui `sh test/build_binds_test.sh --self-test` (Windows) | Builds here (`NUI_NORUN=1`). **Not run yet**: it needs Windows. A Python check of the built stand-in found each signature once (the layout twice), and the pad table operand at the action table + `0x468`. |
+| nui `sh test/build_binds_test.sh --self-test` (Windows, on Lego, `8186073`) | **Passes**, with MSYS2's 32-bit g++ 16.2.0 and no warnings: main 13/0, nomatch 3/0, MOVE_ALL caught (by BIND-W5 and BIND-W7). The fault build's code with no fault passes 13/13. `build_key_test.sh --self-test` still passes on this head (35/0, 6/0, all 6 faults caught). |
 | nui `example/build.sh` (MinGW), `frozen_check.py` | Builds, no warnings. Frozen layouts unchanged (the read has no bus). |
 | Chronicle `test/test_keys.lua` at `b2ccfbb` | 224 passed. BIND-1 to BIND-11 cover the rules, the movement keys, the layouts, the stock tables of the saved image, the command, the Settings row, no warning at load or in the status, and an older DLL or a refusal. 27 rules were removed in turn, and a named check failed for each. `test_chord` 99, `test_autohide` 94, `test_pad` 100, `test_input` 85, `test_doc` 212 and the syntax check (3,117 files) pass. |
-| In game: key bindings test build 1 (`_chronicle.dll` 2.1.6) | **Not tested yet.** |
+| In game: key bindings test build 1 (`ea78e79`, `_chronicle.dll` 2.1.6) | **Works**, by the user's report of 2026-11-28. Every check on the list passes: Ctrl+Y warns with Confirm, G and O give no warning, F10 warns with action 82, K warns in Compact 1, and the status and the load say nothing new. The user's answers are in `docs/key-bindings-research.md`: the mode is the "Keyboard size" (Full, Compact 1, Compact 2), only the compact sizes can reassign keys, letters need Ctrl or Alt, and K turns the camera down in Compact 1. The warning names the size since the next commit. |
 
 ## 5. Working here (a Linux cloud container)
 
@@ -398,8 +399,8 @@ Done, with the detail in §3 and §4: test build 2 of the controller, and the ke
 key. Also the choosable controller chord, auto-hide, and the keyboard hook. All work in game. A held arrow keeps turning the
 camera when K takes the keys, until it is let go. The user chose to keep that rule.
 
-1. **Built: the player's own key bindings** (`docs/key-bindings-research.md`). Left: the Windows stand-in test on
-   Lego, the game test, and the four questions at the end of the note. The notes below are from before the work.
+1. **Done: the player's own key bindings** (`docs/key-bindings-research.md`). They work in game. The notes below are
+   from before the work.
    **The player's own key bindings.** The key hook hides the nav key (K by default) whenever nav is on and the
    chat line is closed. If the game uses that key for an action, the player loses that action. Nothing warns them
    today. What is known:

@@ -10,10 +10,10 @@ the cloud container with the mingw `objdump` and the helpers in `ffxi-private/to
 - The player can change two sets of keys. The client keeps them as **config values**: ids 74 to 105 for the
   movement keys and ids 106 to 137 for the shortcut keys. A change of a value runs a callback that rewrites the
   tables at once.
-- A key-assignment object has open, OK, cancel and "reset to defaults" methods. That is very likely a game menu.
-  The user can confirm it in the game's Config menu.
-- Config id 66 is the **keyboard mode** (0, 1 or 2). The movement keys work only in modes 1 and 2. In those modes
-  a letter does not open the chat line.
+- A key-assignment object has open, OK, cancel and "reset to defaults" methods. It is the game's key assignment
+  menu (Config, Misc. 2), by the user's check in game.
+- Config id 66 is the **keyboard mode**: the game's "Keyboard size" (0 Full, 1 Compact 1, 2 Compact 2). The
+  movement keys work only in the two compact sizes. In those sizes a letter does not open the chat line.
 - In modes 1 and 2 the default movement keys use **K without Shift**. So the default nav key K is a game key there.
 - A read-only scan from nui can find every table and value by signature. Each signature matches once.
 
@@ -137,13 +137,16 @@ The checks that make the read safe:
 7. The read copies bytes. It patches nothing, takes no lock and calls no client code. The game writes the tables on
    its own thread. A torn read can give one stale binding, and the next read fixes it.
 
-## Open questions for the game
+## Answers from the game (the user, 2026-11-28)
 
-1. Does the Config menu have a screen to change keys (shortcut keys, movement keys, or both)? Does the FFXI Config
-   tool have one?
-2. Which keyboard mode does the player use? The code calls it config id 66, with three values.
-3. With the stock keys, does a plain I open the item menu, or only Ctrl + I or Alt + I?
-4. In the mode with the movement keys, what does K do? The code shows K without Shift as a movement or camera key.
+1. **The menu:** Config, Misc. 2 has a "Keyboard size" option with three values: Full, Compact 1 and Compact 2.
+   Compact 1 adds movement keys, for keyboards with no number pad. Compact 2 is Compact 1 with mouse support. With a
+   compact size, a key assignment section lets the player reassign the movement and command keys. The keys of the
+   Full size cannot be reassigned. So the mode values are 0 Full, 1 Compact 1 and 2 Compact 2.
+2. **The user's mode:** Compact 1, with its default keys.
+3. **Shortcut letters:** Ctrl or Alt must be held for a letter to open its menu, as rule `0x10` says.
+4. **K:** in Compact 1, K moves the camera down (when it is not Chronicle's nav key). That matches the movement
+   table's K entries.
 
 ## Decisions (agreed with the user, 2026-11-28)
 
