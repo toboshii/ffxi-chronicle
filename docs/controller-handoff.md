@@ -6,7 +6,7 @@ research behind it, and `docs/test-findings-plan.md`, the fixes from the two tes
 
 Last updated 2026-11-28, at the end of the session on `claude/new-session-07e3om`. That session built the
 `keyboard-bindings` branch for an upstream PR of `key_bindings()`. The user then chose not to raise that PR (§6 item
-4). `docs/next-session-prompt.md` is the brief for whoever picks it up.
+4). The session also removed a misleading line from `//cr status` (`55fc994`), and that works in game. `docs/next-session-prompt.md` is the brief for whoever picks it up.
 
 ## 1. State in one paragraph
 
@@ -39,7 +39,7 @@ items 3 onward, and none of it is urgent. Most of it waits on upstream or on the
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `claude/new-session-07e3om` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The session of 2026-11-28 that built the `keyboard-bindings` PR branch, from `claude/new-session-3mgx68`'s heads. It changes only this document and `docs/next-session-prompt.md`. The nui branch has no new commits. |
+| both | `claude/new-session-07e3om` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The session of 2026-11-28 that built the `keyboard-bindings` PR branch, from `claude/new-session-3mgx68`'s heads. In Chronicle it adds one code change, `55fc994` (§4), and updates this document and `docs/next-session-prompt.md`. The nui branch has no new commits. |
 | both | `claude/new-session-3mgx68` | Chronicle: `9cd8ba8`. nui: `8895b87` | The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the key bindings research, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6, the warning, the main menu research and the README's macro paragraph. |
 | both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
 | both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
@@ -101,7 +101,10 @@ Chronicle commits on the branch after test build 1:
 | `d8a8dba` | docs: the key bindings work in game, with the user's answers |
 | `0ee683b`, `951ad7c` | docs: the main menu item, two research passes (`docs/main-menu-research.md`) |
 | `42d976c` | docs: open Chronicle from a game macro with `/con` (README), and the main menu decision |
-| this commit | docs: the handoff and the prompt for the next session |
+| `46ae136`, `9cd8ba8` | docs: the handoff and the prompt for the next session |
+| `022b6f2` | docs: the key bindings PR stays unraised (on `claude/new-session-07e3om`) |
+| `55fc994` | status: drop the line that says the keyboard is blocked |
+| this commit | docs: the status line works in game |
 
 Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, KeyHook ABI **1**, revision **1**, atlas format **4**.
@@ -388,6 +391,14 @@ Since 2026-11-28, the key bindings:
 | nui `example/build.sh` (MinGW), `frozen_check.py` | Builds, no warnings. Frozen layouts unchanged (the read has no bus). |
 | Chronicle `test/test_keys.lua` at `b2ccfbb` | 224 passed. BIND-1 to BIND-11 cover the rules, the movement keys, the layouts, the stock tables of the saved image, the command, the Settings row, no warning at load or in the status, and an older DLL or a refusal. 27 rules were removed in turn, and a named check failed for each. `test_chord` 99, `test_autohide` 94, `test_pad` 100, `test_input` 85, `test_doc` 212 and the syntax check (3,117 files) pass. |
 | In game: key bindings test build 1 (`ea78e79`, `_chronicle.dll` 2.1.6) | **Works**, by the user's report of 2026-11-28. Every check on the list passes: Ctrl+Y warns with Confirm, G and O give no warning, F10 warns with action 82, K warns in Compact 1, and the status and the load say nothing new. The user's answers are in `docs/key-bindings-research.md`: the mode is the "Keyboard size" (Full, Compact 1, Compact 2), only the compact sizes can reassign keys, letters need Ctrl or Alt, and K turns the camera down in Compact 1. The warning names the size since the next commit. |
+
+Since 2026-11-28, the status line (`55fc994`):
+
+| What | Status |
+|---|---|
+| The change | With the key hook joined, `//cr status` and `//cr nav status` printed "the search box and the Keyboard key row block the whole keyboard (keyboard_blockinput)". The line never changed, and it read as if the nav key blocks the whole keyboard. It is gone. The README already describes the search box block. The fallback line, without the hook, still says the whole keyboard is blocked and why. |
+| Chronicle `test/test_keys.lua` at `55fc994` | 226 passed. HOOK-18 checks that the status says nothing about the whole keyboard while the hook is joined. It fails with the old line put back. `test_chord`, `test_autohide`, `test_pad` and the syntax check pass. `test_load` fails here, as on the commit before, because it needs the Windows DLL. |
+| In game: the status line test build (`55fc994`) | **Works**, by the user's report of 2026-11-28. |
 
 ## 5. Working here (a Linux cloud container)
 
