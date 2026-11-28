@@ -62,6 +62,45 @@ the user. No running game was read.
 Items 1 and 4 are a patch of the client's UI data, which is bigger than the pad and key hooks. They need more research
 before anyone can say the patch fails closed.
 
+## 4. The menu resources (the second pass, 2026-11-28)
+
+- **The menu manager** is the object at `0x106229F0`. Its list at `+0x1C` holds the loaded menu resources. Each
+  resource has its 16-character name at `+0x46`, and `0x1015F600` finds one by name with a 16-byte compare.
+- **Opening a menu** (`0x1015F920`): it finds the resource, reuses an open window or builds a new one (a 0xD4-byte
+  window, class `0x10118750`), and builds it from the resource with `0x101193D0`.
+- **The resource's shape**, as `0x101193D0` and its accessors read it:
+
+  | Offset | What |
+  |---|---|
+  | `+0x04` | Pointer to the element array: entries of 20 bytes. Entry `i` (from 1) is at `+0x04 + (i - 1) * 20`. |
+  | `+0x08` | The frame element (the window's background and size) |
+  | `+0x0C` | One more element (built last, after the items, likely the cursor) |
+  | `+0x18` | WORD: the number of entries |
+
+  An entry's first DWORD points to the element's data, and the element's id is the WORD at data `+0x12`
+  (`0x1011C730` finds an entry by id). The entry's DWORD at `+0x10` is a second pointer.
+- **The window** builds one 0x60-byte object (`0x1011AD60`) per entry, counts them at window `+0x58`, and keeps them
+  in its list at `+0x14`. The entry whose id matches the window's `+0x4C` becomes the selected one.
+- **Where the resources come from:** the client loads them from its data files at run time, into its own heap. They
+  are not in the image, so the saved image cannot show the main menu's entries.
+
+## 5. What a sixteenth item would take
+
+1. Find the `menu    menuwind` resource in the manager's list (after the client loads it, and again whenever the
+   client loads it again).
+2. Allocate a new entry array of 16 entries with the client's own allocator (`0x103131FB`), because the client may
+   free the old one itself. Copy the 15 entries, add one, and set the count.
+3. Make the new entry's element data: a copy of item 15's data with a new id, a new place and a new label. The format
+   of that data (the label, the place, the links that the cursor follows) is not known yet. Lego could read it from
+   the live game, but that needs a read of a running client.
+4. Make the frame taller, so the window draws the sixteenth row.
+5. Patch the handler: item 16 runs `/con cr show` through `0x10080DC0`.
+
+Steps 1 to 4 change the client's UI data in its heap, and they depend on a data format nobody has read yet. Each
+change can fail in ways the pad and key hooks cannot: a wrong link can strand the cursor, and a wrong size can draw
+the window wrong. A fail-closed check can confirm the resource's shape before any change, but it cannot confirm that
+the result draws and navigates well. Only many test builds in game can do that.
+
 ## What works today
 
 A game macro with the line `/con cr show` opens Chronicle. The macro bar also works from the pad, through the
