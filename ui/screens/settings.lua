@@ -24,6 +24,7 @@ local function rows(app)
         {key = 'wintype', label = 'Window type', value = wt},
         {key = 'pad', label = 'Controller', value = s.pad ~= false and 'On' or 'Off'},
         {key = 'pad_chord', label = 'Controller buttons', value = pr.pad_chord and pr.pad_chord() or 'L3+R3'},
+        {key = 'pad_layout', label = 'Controller layout', value = pr.pad_layout and pr.pad_layout() or 'Auto'},
         {key = 'nav', label = 'Keyboard', value = s.nav ~= false and 'On' or 'Off'},
         {key = 'nav_key', label = 'Keyboard key', value = pr.nav_key and pr.nav_key() or 'K'},
         {key = 'auto_hide', label = 'Hide on Back', value = s.auto_hide == true and 'On' or 'Off'},

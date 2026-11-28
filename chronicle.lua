@@ -97,8 +97,9 @@ local defaults = {
     active_tab = 'mission',
     show_uncompletable = false,
     share_textures = true,  -- false: keep this addon's own textures (start 'noshare'), not the shared cache
-    pad = true,             -- the controller: the chord takes it (nui's pad hook, XInput only); false never hooks it
+    pad = true,             -- the controller: the chord takes it (nui's pad hook, XInput or DirectInput); false never hooks it
     pad_chord = 'l3+r3',    -- that chord: two buttons, a name for ui/pad.lua's pad.parse_chord ('l3+r3', 'lb+rb', 'back+start')
+    pad_layout = 'auto',    -- a DirectInput pad's buttons: 'auto' (by the pad's maker), 'playstation', 'xbox', 'nintendo', 'generic'
     nav = true,             -- the keyboard: the nav key takes the arrows, Enter, Backspace, Escape, Tab, PgUp/PgDn, Home/End; false never takes a key
     nav_key = 'k',          -- that key: a name for ui/keys.lua's keys.parse ('k', 'ctrl+n', 'f10')
     auto_hide = false,      -- Cancel at a root view (pad or keyboard) hides the window, and so gives back both inputs
@@ -268,8 +269,29 @@ app.on_hide = hide
 -- //cr pad.
 ---------------------------------------------------------------------------
 local padc = {dec = pad.new(), joined = false, held = false, retry_at = 0, why = nil, prev = 0, acts = {}, frac = 0,
-              said = false, conflicts = {}, wait = nil}
+              said = false, conflicts = {}, wait = nil,
+              -- nui 1.8.0: the pad the game reads ('xinput', or 'dinput' through padc.layout), its maker, its last read
+              src = nil, layout = nil, layout_auto = nil, vendor = 0, dseq = nil, dv = {0, 0, 0, 0, 0, 0, 0}}
 local PAD_WAIT_S = 5            -- the Settings row "Controller buttons" waits this long for a press, then keeps the old chord
+
+-- A DirectInput pad's layout (nui 1.8.0): the setting, or with 'auto' the one for the pad's maker. -> layout, auto
+local function pad_layout_of(vendor)
+    local want = pad.parse_layout(settings.pad_layout or 'auto') or 'auto'
+    if want ~= 'auto' then return pad.LAYOUTS[want], false end
+    return pad.LAYOUTS[pad.layout_for(vendor)], true
+end
+
+-- The chord to the hook: as XInput buttons and, through the DirectInput layout, as DirectInput buttons (an older DLL takes
+-- the first only). Before the game has read a DirectInput pad, the layout is the setting's, or the generic one
+local function pad_send_chord(c)
+    if not (padc.joined and nui.N and nui.N.pad_chord) then return end
+    nui.N.pad_chord(c.mask, pad.di_mask(padc.layout or pad_layout_of(padc.vendor), c.mask))
+end
+
+local function pad_conflicts(mask)
+    if padc.src == 'dinput' then return pad.chord_conflicts_dinput(padc.cfg, padc.layout, mask) end
+    return pad.chord_conflicts(padc.cfg, mask)
+end
 
 -- The chord (settings.pad_chord), parsed again whenever the setting changes (a login reads the next character's). A name that
 -- does not parse falls back to L3 + R3. A new chord goes to the decoder, to the conflict check and, once joined, to the hook.
@@ -278,14 +300,19 @@ local function pad_chord()
     if padc.chord and padc.chord_src == want then return padc.chord end
     padc.chord, padc.chord_src = pad.parse_chord(want) or pad.parse_chord('l3+r3'), want
     padc.dec:set_chord(padc.chord.mask)
-    padc.conflicts = pad.chord_conflicts(padc.cfg, padc.chord.mask)
-    if padc.joined and nui.N and nui.N.pad_chord then nui.N.pad_chord(padc.chord.mask) end
+    padc.conflicts = pad_conflicts(padc.chord.mask)
+    pad_send_chord(padc.chord)
     return padc.chord
 end
 
+-- a chord's name as the pad in use prints its buttons (L3+R3; LS+RS on a Nintendo pad; #11+#12 on a generic one)
+local function chord_label(c) return pad.chord_label(padc.layout, c or pad_chord()) end
+
 local function pad_hint()
-    local ok, back = padc.dec:labels()
-    return ok .. ' Open  ' .. back .. ' Back  LB RB Section  LT RT Page  ' .. pad_chord().label .. ' Done'
+    local L = padc.layout
+    local ok, back = padc.dec:labels(L)
+    return ok .. ' Open  ' .. back .. ' Back  ' .. pad.label(L, 'lb') .. ' ' .. pad.label(L, 'rb') .. ' Section  ' ..
+        pad.label(L, 'lt') .. ' ' .. pad.label(L, 'rt') .. ' Page  ' .. chord_label() .. ' Done'
 end
 
 -- the game's own Confirm and Cancel, and whether it also uses L3 or R3. A registry read that needs no hook, so it runs
@@ -310,7 +337,7 @@ local function pad_join(now)
         padc.joined, padc.why = true, nil
         -- nui 1.4.0: the hook keeps the chord from the game itself, so L3 + R3 never sits the player down or turns the
         -- camera (a lone chord button reaches the game up to 150 ms late; a tap of one still does)
-        if nui.N.pad_chord then nui.N.pad_chord(pad_chord().mask) end
+        pad_send_chord(pad_chord())
         return true
     end
     padc.why = msg
@@ -341,7 +368,7 @@ local function pad_take(buttons)
     if not padc.said then
         padc.said = true
         local c = pad_chord()
-        say('controller: ' .. c.label .. ' gives it back to the game')
+        say('controller: ' .. chord_label(c) .. ' gives it back to the game')
         if #padc.conflicts > 0 and not nui.N.pad_chord then
             say(('your FFXI pad config also uses %s or %s: pressing both does that too (a newer _chronicle.dll stops it)')
                 :format(pad.CHORD_LABEL[c.name:match('^[^+]+')], pad.CHORD_LABEL[c.name:match('[^+]+$')]), 167)
@@ -384,6 +411,52 @@ local function nav_act(a, give, hint)
     elseif a == 'bottom' then win:pad_scroll(win.content_h or 0, true) end
 end
 
+-- The game reads a DirectInput pad (nui 1.8.0), or an XInput one again: the layout, the game's own Confirm and Cancel for that
+-- pad, the chord in its buttons, the conflict check and the hint follow
+local function pad_source(src, vendor)
+    padc.src, padc.vendor, padc.dseq = src, vendor or 0, nil
+    if src == 'dinput' then
+        padc.layout, padc.layout_auto = pad_layout_of(padc.vendor)
+        padc.dec.confirm, padc.dec.cancel = pad.from_config_dinput(padc.cfg, padc.layout)
+    else
+        padc.layout, padc.layout_auto = nil, nil
+        padc.dec.confirm, padc.dec.cancel = pad.from_config(padc.cfg)
+    end
+    local c = pad_chord()
+    padc.conflicts = pad_conflicts(c.mask)
+    pad_send_chord(c)
+    if padc.held and win then win:pad_hint_for(pad_hint()) win:flush() end
+end
+
+-- One read of the pad the game reads, in XInput's terms (numbers, no table): the DirectInput pad through its layout while the
+-- game reads one (nui 1.8.0), else the XInput pad. The DirectInput values are turned over only when they change
+local function pad_read()
+    local seq, buttons, lt, rt, lx, ly, rx, ry, idx, holding = nui.N.pad()
+    if not seq then return nil end
+    if nui.N.pad_dinput then
+        local dseq, db, pov, x, y, z, ax, ay, az, _, _, conn, dhold, vendor = nui.N.pad_dinput()
+        if dseq == -1 and padc.src == 'dinput' then return -1 end          -- torn for now: the last value stays
+        if dseq and dseq > 0 and conn then
+            if padc.src ~= 'dinput' or (vendor or 0) ~= padc.vendor then pad_source('dinput', vendor) end
+            local v = padc.dv
+            if dseq ~= padc.dseq then
+                padc.dseq = dseq
+                v[1], v[2], v[3], v[4], v[5], v[6], v[7] = pad.from_dinput(padc.layout, db, pov, x, y, z, ax, ay, az)
+            end
+            return dseq, v[1], v[2], v[3], v[4], v[5], v[6], v[7], 0, dhold
+        end
+    end
+    if padc.src ~= 'xinput' then pad_source('xinput') end
+    return seq, buttons, lt, rt, lx, ly, rx, ry, idx, holding
+end
+
+-- does the game read a DirectInput pad now (nui 1.8.0)?
+local function pad_dinput_conn()
+    if not (nui.N and nui.N.pad_dinput) then return false end
+    local _, _, _, _, _, _, _, _, _, _, _, conn = nui.N.pad_dinput()
+    return conn == true
+end
+
 -- prerender: one read of the pad (numbers, no table); nothing else unless something changed. Not holding the pad, only the
 -- chord is looked for.
 local pad_wait_tick              -- the Settings row's wait for two buttons (below)
@@ -392,7 +465,7 @@ local function pad_tick(now)
     if not padc.joined then
         if now < padc.retry_at or not pad_join(now) then return end
     end
-    local seq, buttons, lt, rt, lx, ly, rx, ry, _, holding = nui.N.pad()
+    local seq, buttons, lt, rt, lx, ly, rx, ry, _, holding = pad_read()
     if not seq or seq < 0 then return end
     buttons = buttons or 0
     local C = pad_chord().mask
@@ -427,8 +500,23 @@ local function pad_tick(now)
     end
 end
 
+local pad_layout_line            -- the layout in words (below)
 local XINPUT_OFF = 'Enable XInput is off in the FFXI Config (Gamepad), so the game reads the pad with DirectInput, ' ..
-    'which Chronicle cannot read yet. Turn it on to use the controller here'
+    'which this _chronicle.dll cannot read. Turn it on to use the controller here'
+
+-- why the pad cannot be taken now: the game has read no pad yet
+local function pad_none_why()
+    local st = nui.N and nui.N.pad_status and nui.N.pad_status()
+    local di = type(st) == 'table' and st.di_state or nil
+    if di == 'live' then
+        return 'the game has not read a controller yet. Press a button on it. If nothing changes, check that the gamepad ' ..
+            'is on in the FFXI Config (Gamepad)'
+    end
+    if padc.xinput == false then
+        return XINPUT_OFF .. (di and ('. DirectInput: ' .. tostring(st.di_describe)) or '')
+    end
+    return 'the game has not loaded its XInput shim (xinputdll.dll) yet. Try again in a moment'
+end
 
 -- nui 1.5.0, on the client's XInput wrapper: the client has not loaded its XInput shim, so no pad state can arrive
 local function pad_no_shim()
@@ -442,12 +530,19 @@ local function pad_status_lines()
     if not st then say('controller: _chronicle.dll has no controller support', 167) return end
     pad_read_config()                      -- in case nothing has tried the hook yet
     local c = pad_chord()
-    say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and ('ready (' .. c.label .. ')') or 'not joined'),
+    say(('controller %s | %s | %s'):format(padc.held and 'held' or (padc.joined and ('ready (' .. chord_label(c) .. ')') or 'not joined'),
         tostring(st.describe), padc.why and ('why: ' .. padc.why) or ('reads ' .. tostring(st.reads))))
-    local ok, back = padc.dec:labels()
+    if st.di_state then                    -- nui 1.8.0: the DirectInput source
+        local L = padc.layout
+        say(('controller DirectInput: %s | %s'):format(tostring(st.di_describe), st.di_connected
+            and ('the game reads %s (%04X:%04X), layout %s%s'):format(st.di_name ~= '' and st.di_name or 'a pad',
+                st.di_vendor or 0, st.di_product or 0, L and L.name or '?', padc.layout_auto and ' (auto)' or '')
+            or 'the game reads no DirectInput pad'))
+    end
+    local ok, back = padc.dec:labels(padc.layout)
     say(('game pad config: %s | XInput %s | Confirm %s, Cancel %s%s'):format(padc.cfg and padc.cfg.key or 'not found',
         padc.xinput == nil and '?' or (padc.xinput and 'on' or 'off'), ok, back,
-        #padc.conflicts > 0 and (' | ' .. c.label:gsub('%+', '/') .. ' also mapped in the game') or ''))
+        #padc.conflicts > 0 and (' | ' .. chord_label(c):gsub('%+', '/') .. ' also mapped in the game') or ''))
 end
 
 -- A new chord (the command, or the Settings row's wait). -> the chord, or nil and why
@@ -459,6 +554,27 @@ local function pad_set_chord(name)
     pad_chord()
     if padc.held and win then win:pad_hint_for(pad_hint()) win:flush() end
     return c
+end
+
+-- A DirectInput pad's layout (the command, or the Settings row). -> key, or nil and why
+local function pad_set_layout(name)
+    local key, why = pad.parse_layout(name)
+    if not key then return nil, why end
+    settings.pad_layout = key
+    save()
+    if padc.src == 'dinput' then pad_source('dinput', padc.vendor) else pad_send_chord(pad_chord()) end
+    return key
+end
+
+-- the layout in words: 'a PlayStation pad (auto, from the pad's maker)', 'Xbox (the setting)', ...
+pad_layout_line = function()
+    local want = pad.parse_layout(settings.pad_layout or 'auto') or 'auto'
+    if padc.src == 'dinput' and padc.layout then
+        return ('the game reads a DirectInput pad, layout %s (%s)'):format(padc.layout.name,
+            want == 'auto' and "auto, from the pad's maker" or 'the setting')
+    end
+    if want == 'auto' then return "a DirectInput pad's layout follows its maker (no DirectInput pad read yet)" end
+    return "a DirectInput pad's layout is " .. pad.LAYOUTS[want].name .. ' (the setting)'
 end
 
 -- The Settings row "Controller buttons": the next two buttons held together are the chord. While it waits, Chronicle holds
@@ -828,7 +944,13 @@ app.prefs = {
     -- the Settings row "Keyboard key": the key, or the prompt while the next key press is awaited
     nav_key = function() return kbd.capture and 'Press a key' or kbd_key().label end,
     -- the Settings row "Controller buttons": the chord, or the prompt while two buttons are awaited
-    pad_chord = function() return padc.wait and 'Press two buttons' or pad_chord().label end,
+    pad_chord = function() return padc.wait and 'Press two buttons' or chord_label() end,
+    -- the Settings row "Controller layout": a DirectInput pad's buttons (Auto follows the pad's maker)
+    pad_layout = function()
+        local want = pad.parse_layout(settings.pad_layout or 'auto') or 'auto'
+        if want ~= 'auto' then return pad.LAYOUTS[want].name end
+        return (padc.src == 'dinput' and padc.layout) and ('Auto (' .. padc.layout.name .. ')') or 'Auto'
+    end,
     scale_name = function()
         local m = settings.scale_mode or 'one'
         if m == 'sim' then return ('Sim %dx%d'):format(settings.sim_w, settings.sim_h) end
@@ -859,6 +981,12 @@ app.prefs = {
             if settings.nav == false then kbd_give() kbd.capture = false end
         elseif key == 'pad_chord' then
             if padc.wait then pad_wait_end() else pad_wait_start() end    -- a second click cancels
+        elseif key == 'pad_layout' then
+            local order = {'auto'}
+            for _, k in ipairs(pad.LAYOUT_ORDER) do order[#order + 1] = k end
+            local cur, i = pad.parse_layout(settings.pad_layout or 'auto') or 'auto', 1
+            for n, k in ipairs(order) do if k == cur then i = n end end
+            pad_set_layout(order[i % #order + 1])
         elseif key == 'nav_key' then
             kbd.capture = not kbd.capture       -- the next key pressed is the nav key (kbd_capture); a second click cancels
         elseif key == 'reset' then
@@ -1130,6 +1258,7 @@ local HELP = {
     '  //%s uncompletable   toggle uncompletable quests',
     '  //%s pad [on | off | status]   take the controller (L3+R3, or your chord, does too)',
     '  //%s pad chord [name]   the two buttons that take it: l3+r3, lb+rb, back+start ...',
+    '  //%s pad layout [auto | playstation | xbox | nintendo | generic]   a DirectInput pad\'s buttons',
     '  //%s nav [on | off | status | key <name>]   take the keyboard\'s arrows (the nav key, K, does too)',
     '  //%s q [area] | m [area]   summaries in chat',
     '  //%s progress [log | debug]   quest step progress',
@@ -1230,13 +1359,21 @@ windower.register_event('addon command', function(...)
     elseif cmd == 'pad' or cmd == 'controller' then
         if a == 'chord' then
             if not b then
-                say('controller: ' .. pad_chord().label .. ' takes and gives back the controller (//' .. ident.short ..
+                say('controller: ' .. chord_label() .. ' takes and gives back the controller (//' .. ident.short ..
                     ' pad chord <name>)')
                 return
             end
             local ch, why = pad_set_chord(table.concat(args, ' ', 3))
-            if ch then say('controller: ' .. ch.label .. ' takes and gives back the controller')
+            if ch then say('controller: ' .. chord_label(ch) .. ' takes and gives back the controller')
             else say('controller: ' .. why, 167) end
+            if win and app.view.name == 'settings' then win:invalidate('all') win:flush() end
+        elseif a == 'layout' then
+            if b then
+                local key, why = pad_set_layout(table.concat(args, ' ', 3))
+                if not key then say('controller: ' .. why, 167) return end
+            end
+            say('controller: ' .. pad_layout_line() .. ' (//' .. ident.short .. ' pad layout <auto | playstation | xbox | ' ..
+                'nintendo | generic>)')
             if win and app.view.name == 'settings' then win:invalidate('all') win:flush() end
         elseif a == 'on' or a == 'off' then
             settings.pad = a == 'on'
@@ -1251,18 +1388,18 @@ windower.register_event('addon command', function(...)
             pad_give()
         elseif not pad_join(os.clock()) then
             local why = tostring(padc.why)
-            if padc.xinput == false then         -- the game's own config says so: no guessing between the two causes
+            if padc.xinput == false and not nui.N.pad_dinput then   -- the game's own config says so, and this DLL reads no DirectInput
                 why = why .. '. ' .. XINPUT_OFF
             elseif why:find('not loaded', 1, true) then
                 why = why .. '. Turn on Enable XInput in the FFXI Config (Gamepad), or press a pad button first'
             end
             say('controller: ' .. why, 167)
-        elseif pad_no_shim() then
-            -- nui 1.5.0 joins the client's XInput wrapper before the client loads its XInput shim, and in DirectInput mode
-            say('controller: ' .. (padc.xinput == false and XINPUT_OFF
-                or 'the game has not loaded its XInput shim (xinputdll.dll) yet. Try again in a moment'), 167)
+        elseif pad_no_shim() and not pad_dinput_conn() then
+            -- nui 1.5.0 joins the client's XInput wrapper before the client loads its XInput shim, and in DirectInput mode;
+            -- nui 1.8.0 reads the DirectInput pad once the game reads one
+            say('controller: ' .. pad_none_why(), 167)
         else
-            local _, b = nui.N.pad()
+            local _, b = pad_read()
             pad_take(b or 0)
         end
     elseif cmd == 'nav' or cmd == 'keys' then

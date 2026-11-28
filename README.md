@@ -151,10 +151,29 @@ button you pressed while Chronicle had the controller stays away from the game u
 give the controller back first. The game never sees half a press. Moving the mouse over the window gives the
 hover back to the mouse until you next use the controller.
 
-The controller has to be in the game's **XInput** mode: in the FFXI Config, on the Gamepad tab, turn on Enable
-XInput. Chronicle reads the controller only the way the game reads it, and in DirectInput mode it does not read
-it at all. `//cr pad status` says whether it is reading the controller, and why not. Steam Input can remap a pad
-behind the game's back, so turn it off for FFXI.
+Chronicle reads the controller the way the game reads it. The game reads an Xbox pad through XInput when Enable
+XInput is on (in the FFXI Config, on the Gamepad tab). It reads every other pad through DirectInput, and an Xbox pad
+too when Enable XInput is off. Chronicle reads both. `//cr pad status` says which pad the game reads, and why
+Chronicle does not read it. Steam Input can remap a pad behind the game's back, so turn it off for FFXI.
+
+### A DirectInput pad
+
+DirectInput pads number their buttons by maker. Chronicle reads the pad's maker, and gives each button its place in
+the table above:
+
+| Pad | Layout | The buttons |
+|---|---|---|
+| DualShock 4, DualSense | PlayStation | Cross is A, Circle B, Square X, Triangle Y, L1 and R1 are LB and RB, L2 and R2 are LT and RT, Share is Back, Options is Start |
+| Xbox pad, with Enable XInput off | Xbox | As printed on the pad |
+| Switch Pro | Nintendo | By place: the bottom button (B) is A, the right one (A) is B, the left one (Y) is X, the top one (X) is Y. L, R, ZL, ZR, Minus and Plus are LB, RB, LT, RT, Back and Start |
+| Any other pad | Generic | By number: button 1 is X, 2 is A, 3 is B, 4 is Y, 5 and 6 are LB and RB, 7 and 8 are LT and RT, 9 is Back, 10 is Start, 11 and 12 are L3 and R3 |
+
+The hint line uses the names on your pad, for example "Cross Open  Circle Back". If a button does the wrong thing,
+choose another layout: click "Controller layout" on the Settings screen, or use `//cr pad layout xbox` (or
+`playstation`, `nintendo`, `generic`). `//cr pad layout auto` goes back to the layout for the pad's maker.
+
+Confirm and Cancel still come from the game's own pad config. The chord (L3 + R3) is the same two buttons on every
+pad, and the game does not see it either.
 
 `//cr pad` does what L3 + R3 does, so it can be bound to a key with Windower's `bind`. `//cr pad off` stops
 Chronicle reading the controller at all, and the Settings screen has the same switch.
@@ -257,6 +276,7 @@ K no longer takes the keys, and the Settings screen has the same switch.
 | `//cr uncompletable` | Show quests that can no longer be done |
 | `//cr pad [on \| off \| status]` | Take or give back the controller (as L3 + R3), turn it on or off, or say why it is not working |
 | `//cr pad chord [name]` | Name the chord that takes the controller, or choose two other buttons (`lb+rb`) |
+| `//cr pad layout [name]` | Name a DirectInput pad's layout, or choose one: `auto`, `playstation`, `xbox`, `nintendo`, `generic` |
 | `//cr nav [on \| off \| status \| key <name>]` | Take or give back the keyboard's arrow keys (as K), turn K on or off, say how Chronicle keeps the keys from the game, or choose another key |
 | `//cr q [area]` / `m [area]` | Summaries in the chat log |
 | `//cr status` | Drawing, memory and hook details |
@@ -383,7 +403,9 @@ The controller comes from the same library. No Windower API gives an addon the c
 game's own XInput read, once per process. It changes one instruction of the game's XInput wrapper in
 `FFXiMain.dll`, which it finds by its byte signature, the way it finds the `EndScene` wrapper. That works with
 every build of `xinput1_3.dll`. If a game update changes that wrapper, nui hot-patches
-`xinput1_3.dll!XInputGetState` instead, where that DLL allows it. Any addon built on nui shares that one hook.
+`xinput1_3.dll!XInputGetState` instead, where that DLL allows it. For a DirectInput pad, nui changes two
+instructions in the game's input update, right after its two reads of the pad, also found by their byte
+signatures. Any addon built on nui shares these hooks.
 While no addon holds the controller, the hook only looks: the game gets exactly what it read. If nui does not
 find either place as it expects, it patches nothing, and `//cr pad status` says why. If Chronicle stops
 answering, the game gets its controller back by itself within a quarter of a second.

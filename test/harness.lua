@@ -120,11 +120,32 @@ function H.fake_native(opts)
         return p.seq, p.buttons, p.lt, p.rt, p.lx, p.ly, p.rx, p.ry, 0, N.pad_holding
     end
     function N.pad_capture(on) N.pad_holding = on and true or false N.captures = N.captures + 1 return true end
-    function N.pad_chord(b) N.chord = b return true end
+    function N.pad_chord(b, d) N.chord, N.di_chord = b, d return true end
     function N.pad_config() return opts.pad_config end
     function N.pad_status()
-        return {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding, route = opts.pad_route or 'export',
-                shim = opts.pad_shim}
+        local st = {state = 'live', describe = 'fake pad', reads = 0, holding = N.pad_holding, route = opts.pad_route or 'export',
+                    shim = opts.pad_shim}
+        if opts.dinput then
+            local d = N.distate
+            st.di_state = opts.di_state or 'live'
+            st.di_describe = opts.di_describe or 'fake DirectInput'
+            st.di_connected = d ~= nil and d.conn ~= false
+            st.di_vendor, st.di_product, st.di_name = d and d.vendor or 0, d and d.product or 0, d and d.name or ''
+        end
+        return st
+    end
+    -- the DirectInput pad (nui 1.8.0), only with opts.dinput (otherwise an older DLL). N.distate is what the game "read" (nil:
+    -- no DirectInput pad; set its fields and bump seq; torn = true: a torn read; conn = false: not read in the last second)
+    if opts.dinput then
+        N.distate = nil
+        function N.pad_dinput()
+            if not N.pad_joined then return nil end
+            local d = N.distate
+            if not d then return 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, false, N.pad_holding, 0, 0 end
+            if d.torn then return -1 end
+            return d.seq, d.buttons or 0, d.pov or -1, d.x or 0, d.y or 0, d.z or 0, d.rx or 0, d.ry or 0, d.rz or 0, 0, 0,
+                d.conn ~= false, N.pad_holding, d.vendor or 0, d.product or 0
+        end
     end
     function N.pad_stop() N.pad_joined, N.pad_holding = false, false return 'stopped' end
     -- the key hook (nui 1.6.0). opts.key: key_start joins (otherwise it refuses, as when nui finds no keyboard reads, so the
