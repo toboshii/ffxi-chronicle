@@ -517,6 +517,23 @@ camera when K takes the keys, until it is let go. The user chose to keep that ru
      search box for now. Where Windower raises its `keyboard` event is not known, and a message filter must not hide
      a key from it.
 
+### The Chronicle PR branch (2026-11-28)
+
+The user asked for the Chronicle PR before the nui PRs merge, on an assumed nui version. The branch is
+`controller-keyboard-nav` on `toboshii/ffxi-chronicle` (head `9b2153d`), 17 commits on upstream `master` `338643d`.
+The user opens it on `jintawk/ffxi-chronicle` as a draft. Its text is `docs/chronicle-pr.md`.
+
+- The first commit vendors upstream nui `main` with `hd-texture-packs` and `keyboard-key-hook` merged on top (the
+  key hook branch holds the pad PR). Only `.github/workflows/build.yml` and `README.md` conflicted, and the merge
+  keeps both sides, HD first. The copy is labelled nui **1.3.0** (tree `81709b33c6c7...`), by the user's choice.
+  `_chronicle.dll` is **2.1.0**. Chronicle is 2.2.0. The merge itself is not pushed: redo it to rebuild.
+- The later commits replay the fork's code commits with their Lua, tests and README only. Docs-only commits and
+  the two key bindings warning commits (`b2ccfbb`, `2f2df36`) are left out, by the user's choice. `test_keys` has
+  180 checks there instead of 226. The last commit makes the comments name nui 1.3.0 instead of 1.4.0 to 1.6.0.
+- All CI suites and the syntax check pass on Linux. Nobody has run this DLL in game yet.
+- When upstream nui releases, replace the first commit with a sync to the real release, and change the version
+  strings and comments if its number is not 1.3.0. That rewrites the PR branch: ask the user first.
+
 ## 7. Facts from the research worth keeping
 
 From the keyboard research (2026-11-27, `docs/keyboard-hook-research.md`):
