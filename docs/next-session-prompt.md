@@ -6,30 +6,33 @@ Fantasy XI) and `toboshii/nui` (the drawing library that Chronicle vendors in `p
 it private.
 
 The big pieces work in game. They are the controller, the keyboard driver, nui's key hook, and a warning when the
-player's nav key is also a game key. Nothing is urgent. Most of what is left waits on upstream or on the user, so
-**ask the user what they want first.** Start only the work they choose.
+player's nav key is also a game key. A Chronicle PR branch is now built on an assumed nui release. Nothing is urgent.
+Most of what is left waits on upstream or on the user, so **ask the user what they want first.** Start only the work
+they choose.
 
 ## 1. Read these first, in this order
 
 1. `docs/controller-handoff.md` (Chronicle). It gives the current state: branches, commits, the architecture and
    every test result. It also says how to work in the container and on the user's Windows machine, and what is left
    (§6).
-2. `docs/key-bindings-research.md` and `docs/main-menu-research.md`, the two research notes of the last session.
-3. For the work the user picks: the files that §3 and §6 of the handoff name.
+2. The handoff's section "The Chronicle PR branch", just before §7, and `docs/chronicle-pr.md`, the PR text.
+3. `docs/key-bindings-research.md` and `docs/main-menu-research.md`, two research notes.
+4. For the work the user picks: the files that §3 and §6 of the handoff name.
 
 ## 2. Where things stand
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| Chronicle | `claude/new-session-07e3om` | the commit that updates this prompt | Everything so far: nui 1.7.0 vendored, `_chronicle.dll` 2.1.6, Chronicle 2.2.0, the docs. On upstream `master` `338643d`. |
-| nui | `claude/new-session-07e3om` | `8895b87` | PadHook revisions 1 to 3, the HD texture pack work, KeyHook 1, `key_bindings()` (fork releases 1.3.0 to 1.7.0). On upstream `main` `8b2e53c`. |
+| Chronicle | `ccr-3313a465-bepsvd` | the commit that updates this prompt | Everything so far: nui 1.7.0 vendored, `_chronicle.dll` 2.1.6, Chronicle 2.2.0, the docs. On upstream `master` `338643d`. It is `claude/new-session-07e3om` plus the docs of the PR session. |
+| Chronicle | `controller-keyboard-nav` | `9b2153d` | **The upstream PR branch.** 17 commits on upstream `master` `338643d`. nui labelled 1.3.0, `_chronicle.dll` 2.1.0, Chronicle 2.2.0. No `docs/` and no key bindings warning. The user opens it on `jintawk/ffxi-chronicle` as a draft. |
+| nui | `claude/new-session-07e3om` and `ccr-3313a465-bepsvd` | `8895b87` | PadHook revisions 1 to 3, the HD texture pack work, KeyHook 1, `key_bindings()` (fork releases 1.3.0 to 1.7.0). On upstream `main` `8b2e53c`. |
 | nui | `keyboard-bindings` | `563dcc4` | **Not raised, by the user's choice.** A PR branch for `key_bindings()`, stacked on `keyboard-key-hook`. |
 | nui | `keyboard-key-hook` | `db02f6c` | Open PR on `jintawk/nui`: "Keep single keys from the game", stacked on `controller-pad-hook`. |
 | nui | `controller-pad-hook` | `79bb531` | Open PR on `jintawk/nui`: "Read and hold the controller the game reads". |
 | nui | `hd-texture-packs` | `871a167` | Open PR on `jintawk/nui`: "Read the UI art from an HD texture pack". |
 
-Continue from `claude/new-session-07e3om`'s heads. If your session assigns a different branch, create it from those
-heads. Do not change the four PR branches unless the user asks.
+Continue from `ccr-3313a465-bepsvd`'s heads. If your session assigns a different branch, create it from those heads.
+Do not change the five PR branches unless the user asks.
 
 ## 3. What is left (the handoff's §6 has the detail)
 
@@ -42,8 +45,17 @@ heads. Do not change the four PR branches unless the user asks.
    for a warning about a key the player can easily change. They may raise it later, or never. Do not open it unless
    the user asks. Build all new work so that it does not need `key_bindings()`. Chronicle already works without it,
    and its tests check that. The handoff's §6 item 4 has the rules.
-3. **After upstream merges:** Chronicle vendors an upstream nui release, and the fork's release numbers (1.3.0 to
-   1.7.0) give way. Agree on that with the user. Then a Chronicle PR, only when the user asks.
+3. **The Chronicle PR (`controller-keyboard-nav`).** It is built and pushed. The user opens it as a draft and pastes
+   any review comments. Its first commit vendors upstream nui `main` with `hd-texture-packs` and
+   `keyboard-key-hook` merged on top, labelled 1.3.0 by the user's choice.
+   - The merge is not pushed. Redo it from the handoff to rebuild.
+   - The later commits replay the fork's code commits without docs and without the key bindings warning.
+   - First, if the user wants: a test in game of its zip. `_chronicle.dll` 2.1.0 did not run in game yet.
+   - When upstream nui releases, replace the first commit with a sync to the real release. If the number is not
+     1.3.0, change the version strings and the comments that name 1.3.0. That rewrites the PR branch, so ask the user
+     first. The fork's release numbers (1.3.0 to 1.7.0) give way then, so agree on that with the user too.
+   - A change to the fork's Chronicle code that belongs upstream goes on the PR branch as a new commit, with the
+     user's agreement.
 4. **Optional, only if the user asks for one:**
    - DirectInput pads (a second PadHook source).
    - QA frames for controller mode.
