@@ -4,9 +4,12 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-28, at the end of the session on `claude/new-session-07e3om`. That session built the
-`keyboard-bindings` branch for an upstream PR of `key_bindings()`. The user then chose not to raise that PR (§6 item
-4). The session also removed a misleading line from `//cr status` (`55fc994`), and that works in game. `docs/next-session-prompt.md` is the brief for whoever picks it up.
+Last updated 2026-11-28, in the session on `ccr-07711451-sr15e4`. That session built **DirectInput pads**: PadHook
+revision 4 in nui 1.8.0 and the layouts in Chronicle (§3 "DirectInput pads", §4, `docs/dinput-pad-research.md`). The
+session before it, on `claude/new-session-07e3om`, built the `keyboard-bindings` branch for an upstream PR of
+`key_bindings()`. The user then chose not to raise that PR (§6 item 4). That session also removed a misleading line
+from `//cr status` (`55fc994`), and that works in game. `docs/next-session-prompt.md` is the brief for whoever picks it
+up.
 
 ## 1. State in one paragraph
 
@@ -39,7 +42,8 @@ items 3 onward, and none of it is urgent. Most of it waits on upstream or on the
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `claude/new-session-07e3om` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The session of 2026-11-28 that built the `keyboard-bindings` PR branch, from `claude/new-session-3mgx68`'s heads. In Chronicle it adds one code change, `55fc994` (§4), and updates this document and `docs/next-session-prompt.md`. The nui branch has no new commits. |
+| both | `ccr-07711451-sr15e4` | Chronicle: this document's commit. nui: `c68fcaf` | **The latest work.** The DirectInput session (2026-11-28), from `ccr-3313a465-bepsvd`'s heads (Chronicle `74b9d47`, nui `8895b87`). nui 1.8.0 (`c68fcaf`, PadHook revision 4), `_chronicle.dll` 2.1.7 (`6afdc81`), the layouts and their tests, the docs. |
+| both | `claude/new-session-07e3om` | Chronicle: `74b9d47` (on `ccr-3313a465-bepsvd`). nui: `8895b87` | The session of 2026-11-28 that built the `keyboard-bindings` PR branch, from `claude/new-session-3mgx68`'s heads. In Chronicle it adds one code change, `55fc994` (§4), and updates this document and `docs/next-session-prompt.md`. The nui branch has no new commits. |
 | both | `claude/new-session-3mgx68` | Chronicle: `9cd8ba8`. nui: `8895b87` | The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the key bindings research, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6, the warning, the main menu research and the README's macro paragraph. |
 | both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
 | both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
@@ -222,6 +226,50 @@ Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule
   from `ffxi-private` when it sits next to the nui checkout) and `test/build_binds_test.sh --self-test` (Windows, a
   stand-in client).
 
+### DirectInput pads (nui 1.8.0, PadHook revision 4, Chronicle `_chronicle.dll` 2.1.7)
+
+The research is `docs/dinput-pad-research.md`. In short: the client reads one pad. It reads XInput only when Enable
+XInput is on and the pad is an XInput device. In every other case it reads a DirectInput device (`DIJOYSTATE2`), in the
+same input update as the keyboard, with `GetDeviceState` and then `GetDeviceData`. It maps buttons 0 to 31 through
+`padsin000`, takes each button's state from the state read and its edges only from the events, and reads the sticks and
+POV 0 from the state, ranged -127 to 127.
+
+- **Native (`src/PadHook/PadHook.h`, revision 4).** `PadBus::di` (`PadDiHook`, 640 bytes) follows `PadBus::status`, so
+  the bus layout only grows. Zero there is the revision 3 bus. Two patches, each one whole 5-byte instruction made
+  `call thunk` in one locked 8-byte write:
+  - the `cmp eax, 0x800700AA` after the state read (`0x1000619A` in the 2026-11-02 build), as KeyHook does;
+  - the client's store `mov byte [esp+0x13], 1` on the event read's success branch (`0x10006A0B`). The first design
+    patched `call [edx+0x28]` and the `test` after it, but a thread inside `GetDeviceData` would then return into the
+    middle of the new instruction. Nothing else reaches the store, and the client reads the events only after it.
+  - Signatures of 52 and 100 bytes, each one match in the whole saved image. The thunks need `ebx` (the input object),
+    `edi` (the events) and `ebp` (the count), which the signatures fix.
+- **The press rules** (`di_apply_state`, `di_apply_events`), one record per button: `game`, `hid`, `wait` (a chord
+  button held back), `tap` and `late` (presses owed to the game as events), `swallow` (a release to drop). A press made
+  under a hold is hidden from the state and both events until its release. The sticks and sliders read 0 and POV 0
+  centred while held (POV held from before stays the game's). The chord keeps L3 + R3 from the game. A lone tap goes
+  back as a press event and a release event, and a chord button held too long gets its press event then. The hook never
+  writes more events than the client asked for. The drain rule and the priming rule are KeyHook's.
+- **Ownership.** `PadClient` gains `di_chord` and `di_dispatch` in its reserved tail. The live revision 4 client with the
+  highest revision drives the DirectInput dispatch (`PadDiHook::owner` is slot + 1, so zero is nobody). A revision 3
+  module never touches `PadBus::di`, but its hold counts. `padhook_join` succeeds while either source is live.
+- **The device's maker.** Once per device, the dispatcher calls the device's `GetDeviceInfo` and keeps the USB vendor and
+  product ids (from a `PIDVID` `guidProduct`) and the product name.
+- **Lua API.** `pad_dinput()` gives 15 numbers (seq, buttons, pov, 8 axes, connected, holding, vendor, product).
+  `pad_chord(mask, di_mask)` takes the DirectInput chord. `pad_status()` adds `di_state`, `di_describe`, `di_name`,
+  `di_vendor`, `di_product`, `di_connected` and counters. `pad_start()`'s failure names both sources' reasons.
+- **Chronicle (`ui/pad.lua`).** `pad.LAYOUTS`: `playstation` (Square, Cross, Circle, Triangle, L1, R1, L2, R2, Share,
+  Options, L3, R3; the right stick on Z and Rz), `xbox` (A, B, X, Y, LB, RB, Back, Start, L3, R3; the right stick on Rx
+  and Ry; the triggers on Z, LT positive), `nintendo` (by place, the Switch Pro's names), `generic` (the PlayStation
+  numbering, named `#1` to `#12`). `pad.layout_for(vendor)` picks one by maker (`054C`, `045E`, `057E`, else generic).
+  `pad.from_dinput` turns a read into XInput's terms (POV 0 as the D-pad, 67.5 degrees either side of each direction).
+  `pad.di_mask` gives the chord's DirectInput buttons. `pad.from_config_dinput` reads Confirm and Cancel from
+  `padsin000` as button numbers.
+- **Chronicle (`chronicle.lua`).** `pad_read` replaces `nui.N.pad()` in `pad_tick` and `//cr pad`. It uses the
+  DirectInput pad while `pad_dinput()` says the game reads one, and converts only when its seq changes. `pad_source`
+  switches the layout, Confirm and Cancel, the chord sent to the hook, the conflict check and the hint, and back to
+  XInput when the DirectInput pad goes quiet. `settings.pad_layout` (`auto` by default), the Settings row "Controller
+  layout", and `//cr pad layout [name]` choose a layout. `//cr pad status` has a DirectInput line.
+
 ### Lua, in Chronicle
 
 | File | Role |
@@ -400,6 +448,16 @@ Since 2026-11-28, the status line (`55fc994`):
 | Chronicle `test/test_keys.lua` at `55fc994` | 226 passed. HOOK-18 checks that the status says nothing about the whole keyboard while the hook is joined. It fails with the old line put back. `test_chord`, `test_autohide`, `test_pad` and the syntax check pass. `test_load` fails here, as on the commit before, because it needs the Windows DLL. |
 | In game: the status line test build (`55fc994`) | **Works**, by the user's report of 2026-11-28. |
 
+Since 2026-11-28, DirectInput pads (nui 1.8.0, `_chronicle.dll` 2.1.7):
+
+| What | Status |
+|---|---|
+| nui `sh test/pad_linux/run.sh --self-test` (`c68fcaf`) | logic 19, chord 19, wrapper 54, **dinput 79, disites 49**: all pass. disites runs the client's real read bytes through the patches in a stand-in update, at the client's alignment, before the patch, with nobody driving and with the real dispatcher, and with the patch put in from inside each read. It also scans the whole saved image (one match of each). 13 faults caught: OLD_THUNK, FIRST_MATCH, and DI_NO_CHORD, DI_TAKE_HELD, DI_LEAK_HELD, DI_NO_TAP, DI_NO_CENTRE, DI_NO_EVENTS, DI_NO_DRAIN, DI_NO_PRIME, DI_FIRST_MATCH, DI_NO_CMP, DI_NO_STORE. |
+| nui `frozen_check.py`, `sync.py check`, MinGW builds | Pass. Only `PadClient.reserved` moved (it shrank to 4 bytes), and every frozen line holds. The Windows test exes build with no warnings. |
+| nui `sh test/build_pad_test.sh --self-test` on Windows (`pad_di_test.exe dinput`, `nomatch`, and the old modes with the higher module now revision 5) | **Not run yet.** Sent to the "Hello" session on Lego. |
+| Chronicle `test/test_dinput.lua` (new, in CI) | 78 passed. DIN-1 the maker, DIN-2 the conversion per layout, DIN-3 the chord's DirectInput buttons to the hook, DIN-4 the cursor and buttons through a PlayStation pad, DIN-5 Confirm and Cancel from `padsin000`, DIN-6 the hint's names, DIN-7 the setting, the command and the Settings row, DIN-8 back to XInput, DIN-9 a torn read, DIN-10 an older DLL, DIN-11 `//cr pad`'s messages, DIN-12 the status line and the conflict check, DIN-13 a conversion only on change, DIN-14 the help line. 27 rules were removed in turn, and each made a named check fail. `test_pad` 100, `test_keys` 226, `test_chord` 99, `test_autohide` 94, `test_input` 85, `test_doc` 212 and the syntax check pass. |
+| In game | **Not tested yet.** |
+
 ## 5. Working here (a Linux cloud container)
 
 - **Toolchain.** `apt-get update`, then `apt-get install -y g++-mingw-w64-i686 lua5.1 g++-multilib`.
@@ -486,7 +544,9 @@ camera when K takes the keys, until it is let go. The user chose to keep that ru
    upstream nui release that has the pad hook and the key hook. Use a new branch with no `claude/` or
    `agent/` prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
 6. **Optional, each only if the user asks:**
-   - **DirectInput pads,** as a second PadHook source (`PADHOOK_SRC_DINPUT` is reserved). Today only XInput pads work.
+   - **Done: DirectInput pads** (nui 1.8.0, §3 "DirectInput pads"). Left: the Windows run on Lego and the in-game test.
+     The layouts for the Switch Pro's right stick and the Xbox pad's trigger axis come from public mappings and need
+     the user's report.
    - **QA frames for controller mode:** the cursor frame and the hint line in `test/qa_render.lua`'s shots.
    - **The window's place and size from the pad or the keyboard.** Today only the mouse moves the window (drag) and
      resizes it (the grips, which the cursor skips on purpose). Without a mouse, the player can only reset both
