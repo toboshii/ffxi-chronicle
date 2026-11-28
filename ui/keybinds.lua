@@ -84,6 +84,10 @@ for i = 0, 9 do                                    -- ids 98 and 108 are the 0 k
 end
 keybinds.NAMES = NAMES
 
+-- The keyboard mode is the game's "Keyboard size" (Config, Misc. 2). Compact 1 adds the movement keys for keyboards with no
+-- number pad, and Compact 2 adds mouse support to it. Only the two compact sizes let the player reassign keys.
+keybinds.MODE_NAMES = {[0] = 'Full', [1] = 'Compact 1', [2] = 'Compact 2'}
+
 -- b: key_bindings()'s table. k: keys.parse's key ({dik, ctrl, alt, shift}, Windower's code).
 -- -> a list of what the game does with that key (strings, the actions first in id order), or nil when b is nil
 function keybinds.uses(b, k)
@@ -102,7 +106,7 @@ function keybinds.uses(b, k)
         local sc = shortcut(b, g.dik)
         for _, m in ipairs(b.moves or {}) do
             if keybinds.move_hits(m, g, sc) then
-                out[#out + 1] = 'a movement or camera key (keyboard mode ' .. tostring(b.mode) .. ')'
+                out[#out + 1] = 'a movement or camera key (keyboard size ' .. (keybinds.MODE_NAMES[b.mode] or tostring(b.mode)) .. ')'
                 break
             end
         end
