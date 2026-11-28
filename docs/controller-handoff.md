@@ -4,7 +4,8 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-28 (the player's key bindings, session `claude/new-session-3mgx68`).
+Last updated 2026-11-28, at the end of the key bindings session (`claude/new-session-3mgx68`). The user paused the
+work there. `docs/next-session-prompt.md` is the brief for whoever picks it up.
 
 ## 1. State in one paragraph
 
@@ -29,13 +30,14 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 built** (nui 1.7.0 `8186073`, Chronicle `b2ccfbb`, `docs/key-bindings-research.md`). The client rewrites its binding
 tables at run time, so nui reads them live with `key_bindings()`, and Chronicle warns when a new nav key is also a game
 key. The Linux and Windows tests pass, and test build 1 works in game (§4). The main menu item is researched and
-stopped by the user's choice (§6 item 2). What is left is §6 items 3 onward.
+stopped by the user's choice (§6 item 2): a game macro with `/con cr show` opens Chronicle instead. What is left is §6
+items 3 onward, and none of it is urgent. Most of it waits on upstream or on the user.
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
-| both | `claude/new-session-3mgx68` | Chronicle: this document's commit. nui: `8186073` | The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the research note, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6 and the warning. |
+| both | `claude/new-session-3mgx68` | Chronicle: this document's commit. nui: `8895b87` | **The latest work.** The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the key bindings research, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6, the warning, the main menu research and the README's macro paragraph. |
 | both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
 | both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `b24f027` (fast-forwarded on 2026-11-27) | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the keyboard work, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
@@ -63,6 +65,7 @@ nui commits on the branch, oldest first:
 | `dc45e56` | nui 1.6.0: keep single keys from the game (KeyHook 1, revision 1) |
 | `8820af0` | test: the key test's status check names the exe it runs in (found by its first Windows run) |
 | `8186073` | nui 1.7.0: read the client's keyboard bindings (`key_bindings()`, `src/KeyBinds/KeyBinds.h`) |
+| `8895b87` | docs: name the keyboard modes as the game does (only `docs/lua-api.md`) |
 
 Chronicle commits on the branch after test build 1:
 
@@ -89,7 +92,12 @@ Chronicle commits on the branch after test build 1:
 | `3f2faf2` | docs: the player's key bindings, from the client's code |
 | `9747196` | nui 1.7.0: the vendored copy and `_chronicle.dll` 2.1.6 |
 | `b2ccfbb` | keys: warn when the nav key is also a game key |
-| this commit | docs: the key bindings work |
+| `ea78e79` | docs: the key bindings work |
+| `2f2df36` | keys: the warning names the game's keyboard size |
+| `d8a8dba` | docs: the key bindings work in game, with the user's answers |
+| `0ee683b`, `951ad7c` | docs: the main menu item, two research passes (`docs/main-menu-research.md`) |
+| `42d976c` | docs: open Chronicle from a game macro with `/con` (README), and the main menu decision |
+| this commit | docs: the handoff and the prompt for the next session |
 
 Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, KeyHook ABI **1**, revision **1**, atlas format **4**.
@@ -194,6 +202,19 @@ Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule
   `key_stop()`. `stop()` calls `key_release()`, and `host_detach` calls `key_detach()`.
 - **What it does not see.** The chat line reads Space, `/` and typed text from `WM_KEYDOWN` and `WM_CHAR`.
 
+### Native, in nui: `src/KeyBinds/KeyBinds.h` and `src/binds.cpp` (nui 1.7.0)
+
+- **What.** `key_bindings()` copies the client's keyboard bindings: the action table (188 actions, 3 WORDs each), the
+  categories, the movement table, the keyboard mode (the game's "Keyboard size": 0 Full, 1 Compact 1, 2 Compact 2)
+  and the layout. `docs/key-bindings-research.md` has the research and the rule bits.
+- **How.** Eight signatures over `FFXiMain.dll`'s code. Each matches once (the layout read twice, with equal
+  operands), the operands agree on one table size, and every table lies in a writable, non-code section. It patches
+  nothing and keeps no shared state, so it has no bus and no frozen layout. The scan runs once per process, and each
+  call copies the tables again, because the game rewrites them at login and from its key assignment menu.
+- **Tests.** `test/binds_linux/run.sh --self-test` (the real bytes, every refusal, and a scan of the whole saved image
+  from `ffxi-private` when it sits next to the nui checkout) and `test/build_binds_test.sh --self-test` (Windows, a
+  stand-in client).
+
 ### Lua, in Chronicle
 
 | File | Role |
@@ -205,6 +226,7 @@ Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule
 | `chronicle.lua` | The section "The controller": `padc`, `pad_read_config`, `pad_join`, `pad_take`, `pad_give`, `pad_act`, `pad_tick` (run from `prerender`), `pad_no_shim`. |
 | `ui/screens/settings.lua` | The rows "Controller", "Controller buttons", "Keyboard", "Keyboard key" and "Hide on Back". |
 | `ui/keys.lua` | Also tracks Ctrl and Alt (`keys.shift()`, `keys.ctrl_alt()`), for the keyboard driver. |
+| `ui/keybinds.lua` | Pure. Decodes `key_bindings()`: `uses(b, key)` names what the game does with a key (the action rules, the movement keys of the compact sizes, the layout remaps). `kbd_say_set` in `chronicle.lua` warns with it when the nav key is set, and keeps the key. `test/fixtures/key_bindings_20261102.lua` holds the saved image's tables for the tests. |
 | `chronicle.lua`, "The keyboard" | `kbd`, `KEY_ACT`, `kbd_take`, `kbd_give`, `kbd_down`, `kbd_tick`, `kbd_reset`. The `keyboard` event runs the search box first, then the driver. |
 | `README.md` | The section "With a controller", and the controller paragraph of "The native layer". |
 
@@ -430,14 +452,24 @@ camera when K takes the keys, until it is let go. The user chose to keep that ru
    pad PR. GitHub cannot stack a PR on a branch of the fork, so it shows the pad commits until the pad PR merges. If
    the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`. Answer review comments on the user's behalf
    only when the user asks. This session cannot read `jintawk/nui`: the user pastes the comments.
-4. **After they merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.6.0. The fork's
-   release numbers (1.3.0 to 1.6.0) give way to upstream's then, so agree on that with the user. DLLs built on the
+4. **After they merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.7.0. The fork's
+   release numbers (1.3.0 to 1.7.0) give way to upstream's then, so agree on that with the user. `key_bindings()`
+   (nui 1.7.0, `src/KeyBinds/`, `src/binds.*`) is in no pull request yet. It needs its own upstream PR, with no
+   release commit, before Chronicle can drop the fork. DLLs built on the
    fork's revisions stay compatible with upstream's, because the buses and their frozen layouts are the same.
 5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks. Chronicle must first vendor an
    upstream nui release that has the pad hook and the key hook. Use a new branch with no `claude/` or
    `agent/` prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, the window's place and size
-   from the pad, and a message filter for the search box (below).
+6. **Optional, each only if the user asks:**
+   - **DirectInput pads,** as a second PadHook source (`PADHOOK_SRC_DINPUT` is reserved). Today only XInput pads work.
+   - **QA frames for controller mode:** the cursor frame and the hint line in `test/qa_render.lua`'s shots.
+   - **The window's place and size from the pad or the keyboard.** Today only the mouse moves the window (drag) and
+     resizes it (the grips, which the cursor skips on purpose). Without a mouse, the player can only reset both
+     (Settings, "Place and size") or set the size with `//cr size`. The idea: a mode in which the left stick or the
+     D-pad moves the window, the right stick or the triggers resize it, Confirm keeps the result and Cancel puts the
+     old place and size back. The arrows and Page Up / Page Down would do the same from the keyboard. The user asked
+     what it meant on 2026-11-28 and did not ask for it.
+   - **A message filter for the search box** (item 8, the last point).
 7. **Upstream's render test, for jintawk.** These come from the Windows run and are in upstream's test code, not in
    this branch:
    - `wt`'s frame crop hashes depend on the machine. 7 of 8 differ on the user's AMD iGPU with upstream's own code.
