@@ -49,7 +49,7 @@ commit changes only comments and one README line.
 - `test_load` needs Windows and the built DLL. It checks for version 2.1.0.
 - In game: the same Lua, on a fork build of the same nui code, works on Windows. That covers the controller on the
   client's own XInput wrapper, the chord, the keyboard with the key hook, the choosable chord and nav key, and auto-hide.
-  Nobody ran this exact DLL in game yet.
+  This exact branch also works in game, with its own DLL.
 
 ## Not in this pull request
 

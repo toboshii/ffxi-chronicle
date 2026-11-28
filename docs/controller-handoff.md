@@ -530,7 +530,9 @@ The user opens it on `jintawk/ffxi-chronicle` as a draft. Its text is `docs/chro
 - The later commits replay the fork's code commits with their Lua, tests and README only. Docs-only commits and
   the two key bindings warning commits (`b2ccfbb`, `2f2df36`) are left out, by the user's choice. `test_keys` has
   180 checks there instead of 226. The last commit makes the comments name nui 1.3.0 instead of 1.4.0 to 1.6.0.
-- All CI suites and the syntax check pass on Linux. Nobody has run this DLL in game yet.
+- All CI suites and the syntax check pass on Linux. **The test zip works in game**, by the user's report of
+  2026-11-28: every check on its list passes (DLL 2.1.0 in `//cr status`, the pad and its chord, K and the key hook,
+  no warning for a new nav key).
 - When upstream nui releases, replace the first commit with a sync to the real release, and change the version
   strings and comments if its number is not 1.3.0. That rewrites the PR branch: ask the user first.
 

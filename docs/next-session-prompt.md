@@ -50,7 +50,7 @@ Do not change the five PR branches unless the user asks.
    `keyboard-key-hook` merged on top, labelled 1.3.0 by the user's choice.
    - The merge is not pushed. Redo it from the handoff to rebuild.
    - The later commits replay the fork's code commits without docs and without the key bindings warning.
-   - First, if the user wants: a test in game of its zip. `_chronicle.dll` 2.1.0 did not run in game yet.
+   - Its test zip works in game, by the user's report of 2026-11-28.
    - When upstream nui releases, replace the first commit with a sync to the real release. If the number is not
      1.3.0, change the version strings and the comments that name 1.3.0. That rewrites the PR branch, so ask the user
      first. The fork's release numbers (1.3.0 to 1.7.0) give way then, so agree on that with the user too.
