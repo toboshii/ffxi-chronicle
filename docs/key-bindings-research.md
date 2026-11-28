@@ -40,8 +40,8 @@ the cloud container with the mingw `objdump` and the helpers in `ffxi-private/to
   and Alt alone) have their own tests.
 - **The shortcut switch** `0x1036DF94` is 1. The key-assignment object sets it to 0 while its menu is open and back
   to 1 on OK or cancel.
-- **The macro keys fit the decode:** ids 108 to 117 are Ctrl + `1` to `0` (`0x02`), and ids 98 to 107 are Alt +
-  `1` to `0` (`0x04`).
+- **The macro keys fit the decode:** ids 108 to 117 are Ctrl + `0`, then Ctrl + `1` to `9` (`0x02`). Ids 98 to 107
+  are the same keys with Alt (`0x04`).
 - **Who writes it:** three small functions.
   - `0x10124B00` returns the first binding's DIK code (signature below).
   - `0x10124B10` sets the first binding to `dik | 0x1000` (rule `0x10`), or to 0.
@@ -144,3 +144,14 @@ The checks that make the read safe:
 2. Which keyboard mode does the player use? The code calls it config id 66, with three values.
 3. With the stock keys, does a plain I open the item menu, or only Ctrl + I or Alt + I?
 4. In the mode with the movement keys, what does K do? The code shows K without Shift as a movement or camera key.
+
+## Decisions (agreed with the user, 2026-11-28)
+
+- **Where Chronicle learns the bindings:** a native read of the live tables. nui 1.7.0 adds `key_bindings()`, a
+  read-only copy, and `_chronicle.dll` 2.1.6 carries it. `ui/keybinds.lua` decodes the copy.
+- **On a clash:** Chronicle warns and keeps the key, as it does for the controller chord.
+- **When it warns:** only when the key is set, from the Settings row "Keyboard key" or `//cr nav key <name>`. Not
+  in the status and not at load.
+
+Found while testing: with the stock bindings, F10 is game action 82 (F1 to F10 are actions 70 to 78 and 82, rule
+`0x80`). Ctrl + N is Cancel (action 15, rule `0x10`). So the README's old examples `f10` and `ctrl+n` were game keys.

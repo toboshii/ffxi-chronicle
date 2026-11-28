@@ -4,7 +4,7 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-28 (after the keyboard hook PR).
+Last updated 2026-11-28 (the player's key bindings, session `claude/new-session-3mgx68`).
 
 ## 1. State in one paragraph
 
@@ -25,14 +25,16 @@ user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). **Th
 1.6.0, `dc45e56`, §3). It hides only the keys Chronicle names, after Windower's wrapper sees them, so chat, macros
 and binds work in nav mode. Chronicle uses it from `9c0ab84` (`_chronicle.dll` 2.1.5). The search box still blocks the
 whole keyboard, and so does nav mode when the hook is missing or refused. Its Linux and Windows tests pass, and
-**keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4). The next piece of work is the
-player's own key bindings: Chronicle should know when its nav key is a key the game uses (§6,
-`docs/next-session-prompt.md`).
+**keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4). **The player's key bindings are
+built** (nui 1.7.0 `8186073`, Chronicle `b2ccfbb`, `docs/key-bindings-research.md`). The client rewrites its binding
+tables at run time, so nui reads them live with `key_bindings()`, and Chronicle warns when a new nav key is also a game
+key. The Linux tests pass. The Windows stand-in test and the game test are next (§4).
 
 ## 2. Repositories, branches, commits
 
 | Repo | Branch | Head | What it holds |
 |---|---|---|---|
+| both | `claude/new-session-3mgx68` | Chronicle: this document's commit. nui: `8186073` | The key bindings session (2026-11-28), from `claude/new-session-1xkqpc`'s heads. It adds the research note, nui 1.7.0 (`key_bindings()`), `_chronicle.dll` 2.1.6 and the warning. |
 | both | `claude/new-session-1xkqpc` | Chronicle: this document's commit. nui: `8820af0` | The keyboard hook session (2026-11-27), from `ccr-bfbc0043-hhlj8v`'s heads (Chronicle `652a620`, nui `6b821c8`). It adds the research note, nui 1.6.0 and its use in Chronicle. |
 | both | `ccr-bfbc0043-hhlj8v` | Chronicle: `652a620`. nui: `6b821c8` | The 2026-11-27 session's branch, made from `ccr-d3a8994b-5t63ba`'s heads (Chronicle `36a7467`). It adds the keyboard driver, the choosable nav key, the choosable controller chord and auto-hide. nui is unchanged. |
 | `toboshii/ffxi-chronicle` | `ccr-d3a8994b-5t63ba` | `b24f027` (fast-forwarded on 2026-11-27) | The controller feature, nui 1.5.0 vendored, `_chronicle.dll` 2.1.4, the keyboard work, the docs. On upstream `master` `338643d` (Chronicle 2.1.1). |
@@ -59,6 +61,7 @@ nui commits on the branch, oldest first:
 | `6b821c8` | test: two fixes in the Windows pad tests, found by their first run (only `test/` changes) |
 | `dc45e56` | nui 1.6.0: keep single keys from the game (KeyHook 1, revision 1) |
 | `8820af0` | test: the key test's status check names the exe it runs in (found by its first Windows run) |
+| `8186073` | nui 1.7.0: read the client's keyboard bindings (`key_bindings()`, `src/KeyBinds/KeyBinds.h`) |
 
 Chronicle commits on the branch after test build 1:
 
@@ -81,9 +84,13 @@ Chronicle commits on the branch after test build 1:
 | `89b0de8` | docs: how the client reads the keyboard (the research note and Lego's report) |
 | `22cb958` | nui 1.6.0: the vendored copy and `_chronicle.dll` 2.1.5 |
 | `9c0ab84` | keys: hide only Chronicle's keys from the game, with nui's key hook (keyboard hook test build 1) |
-| this commit | docs: the keyboard hook |
+| `ad9b128`, `c31f022` | docs: the keyboard hook, the handoff and the prompt |
+| `3f2faf2` | docs: the player's key bindings, from the client's code |
+| `9747196` | nui 1.7.0: the vendored copy and `_chronicle.dll` 2.1.6 |
+| `b2ccfbb` | keys: warn when the nav key is also a game key |
+| this commit | docs: the key bindings work |
 
-Versions now: nui **1.6.0**, `_chronicle.dll` **2.1.5** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
+Versions now: nui **1.7.0**, `_chronicle.dll` **2.1.6** (`plugin/ChronicleModule.cpp`, `kConfig`), Chronicle
 **2.2.0** (`core/ident.lua`), PadHook ABI **1**, revision **3**, KeyHook ABI **1**, revision **1**, atlas format **4**.
 
 ## 3. Architecture
@@ -345,6 +352,16 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 | nui `sh test/build_test.sh --self-test` (Windows, at `6b821c8`) | **Every suite passes but render**, whose failures are the machine's `wt` hashes and `pd` timing above. The script stops at render (`set -e`), so the build-path suite and the pad suite ran directly. sync check ok, frozen layouts unchanged, `hook_test` 101/0, `hook_matrix` 79,980/0 over 9 scenarios, cache 13 of 13 tests, build path all pass, pad 7 modes pass. Self-tests: frozen pass, UiHook 11 of 11 faults caught, cache 19 of 19, build path 17 of 17. No CRASH, NOT CAUGHT or WRONG CHECK line in any run. |
 | Chronicle `test/qa_render.lua`, upstream `338643d` against the branch `fc19479` | **Only the Settings shots differ**, on 2026-11-27 on the user's Windows machine. `qa.py` and the approved frames are not in the repository, so the approval gate could not run. Instead both trees drew the same 220 shots (12 pages, every screen, 3 window sizes, 660 raw frames) through the real DLL, and the frames were compared byte for byte. 654 of 660 are identical. The 6 that differ are `settings.*.full` and `.content`, where the branch adds the row "Controller (L3+R3)" and the rows below it move down 34 px. The manifests differ only in those 3 shots. Not covered: pages with pictures, because the offline harness has no picture cache (301 of 1,915 pages have one). |
 
+Since 2026-11-28, the key bindings:
+
+| What | Status |
+|---|---|
+| nui `sh test/binds_linux/run.sh --self-test` (32-bit Linux, `8186073`) | 58 passed: the eight signatures over the client's real bytes, every refusal, the places, the copy, and a scan of the whole saved image from `toboshii/ffxi-private` (one match each, the layout twice, the tables at `0x1036E6E8` and `0x1036F128`, 42 movement entries). 4 faults caught (FIRST_MATCH, NO_AGREE, NO_PLACE, MOVE_ALL). |
+| nui `sh test/build_binds_test.sh --self-test` (Windows) | Builds here (`NUI_NORUN=1`). **Not run yet**: it needs Windows. A Python check of the built stand-in found each signature once (the layout twice), and the pad table operand at the action table + `0x468`. |
+| nui `example/build.sh` (MinGW), `frozen_check.py` | Builds, no warnings. Frozen layouts unchanged (the read has no bus). |
+| Chronicle `test/test_keys.lua` at `b2ccfbb` | 224 passed. BIND-1 to BIND-11 cover the rules, the movement keys, the layouts, the stock tables of the saved image, the command, the Settings row, no warning at load or in the status, and an older DLL or a refusal. 27 rules were removed in turn, and a named check failed for each. `test_chord` 99, `test_autohide` 94, `test_pad` 100, `test_input` 85, `test_doc` 212 and the syntax check (3,117 files) pass. |
+| In game: key bindings test build 1 (`_chronicle.dll` 2.1.6) | **Not tested yet.** |
+
 ## 5. Working here (a Linux cloud container)
 
 - **Toolchain.** `apt-get update`, then `apt-get install -y g++-mingw-w64-i686 lua5.1 g++-multilib`.
@@ -381,7 +398,9 @@ Done, with the detail in §3 and §4: test build 2 of the controller, and the ke
 key. Also the choosable controller chord, auto-hide, and the keyboard hook. All work in game. A held arrow keeps turning the
 camera when K takes the keys, until it is let go. The user chose to keep that rule.
 
-1. **Next: the player's own key bindings.** The key hook hides the nav key (K by default) whenever nav is on and the
+1. **Built: the player's own key bindings** (`docs/key-bindings-research.md`). Left: the Windows stand-in test on
+   Lego, the game test, and the four questions at the end of the note. The notes below are from before the work.
+   **The player's own key bindings.** The key hook hides the nav key (K by default) whenever nav is on and the
    chat line is closed. If the game uses that key for an action, the player loses that action. Nothing warns them
    today. What is known:
    - The stock English menu bindings leave D, G, K and O free (the first test report). Nobody confirmed that from the
