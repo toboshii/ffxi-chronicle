@@ -105,3 +105,9 @@ the result draws and navigates well. Only many test builds in game can do that.
 
 A game macro with the line `/con cr show` opens Chronicle. The macro bar also works from the pad, through the
 game's own macro palette.
+
+## Decision (the user, 2026-11-28)
+
+Stop. Chronicle adds no item to the main menu. A game macro with `/con cr show` is the supported way to open it
+from the game's own UI, and the README says so. The research above stays for a later attempt. The next step would
+be a read of the live `menu    menuwind` resource on Lego, to learn the element format.

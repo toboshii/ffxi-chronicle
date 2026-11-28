@@ -28,8 +28,8 @@ whole keyboard, and so does nav mode when the hook is missing or refused. Its Li
 **keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4). **The player's key bindings are
 built** (nui 1.7.0 `8186073`, Chronicle `b2ccfbb`, `docs/key-bindings-research.md`). The client rewrites its binding
 tables at run time, so nui reads them live with `key_bindings()`, and Chronicle warns when a new nav key is also a game
-key. The Linux and Windows tests pass, and test build 1 works in game (§4). The next piece of work is a "Chronicle"
-item in the game's main menu (§6 item 2).
+key. The Linux and Windows tests pass, and test build 1 works in game (§4). The main menu item is researched and
+stopped by the user's choice (§6 item 2). What is left is §6 items 3 onward.
 
 ## 2. Repositories, branches, commits
 
@@ -420,8 +420,10 @@ camera when K takes the keys, until it is let go. The user chose to keep that ru
    - The pad side already does this for the chord: `pad.chord_conflicts` checks the game's `padsin000`, and
      `//cr status` says "also mapped in the game".
    `docs/next-session-prompt.md` is the brief.
-2. **A "Chronicle" item in the game's main menu.** Two things are unknown. Can the element array take a sixteenth
-   item? Does `Cmd_ExecuteLine` reach a Windower command? Both need research, and a test in game.
+2. **Stopped: a "Chronicle" item in the game's main menu** (`docs/main-menu-research.md`). A game macro line
+   `/con cr show` reaches Windower, and the README says so. The menu's items are entries in a menu resource in the
+   client's heap, so a sixteenth item needs a patch of UI data in a format nobody has read. The user chose to stop
+   there.
 3. **The three nui pull requests, all open on `jintawk/nui`.** The HD PR and the pad PR add a CI step and a README
    test paragraph in the same place (`.github/workflows/build.yml` and `README.md`). Whichever merges second needs a
    rebase onto upstream `main`, and `abi.md` merges cleanly. The key hook PR (`keyboard-key-hook`) builds on the
