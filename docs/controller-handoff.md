@@ -4,7 +4,7 @@ This is for an agent who continues this work. It records what was built, where i
 not been checked, and what is left. Read it with `docs/controller-support.md`, the original plan with the
 research behind it, and `docs/test-findings-plan.md`, the fixes from the two test reports.
 
-Last updated 2026-11-27 (the keyboard hook).
+Last updated 2026-11-28 (after the keyboard hook PR).
 
 ## 1. State in one paragraph
 
@@ -25,7 +25,9 @@ user's report of 2026-11-27, and so does the choosable nav key (`fb65dc1`). **Th
 1.6.0, `dc45e56`, §3). It hides only the keys Chronicle names, after Windower's wrapper sees them, so chat, macros
 and binds work in nav mode. Chronicle uses it from `9c0ab84` (`_chronicle.dll` 2.1.5). The search box still blocks the
 whole keyboard, and so does nav mode when the hook is missing or refused. Its Linux and Windows tests pass, and
-**keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4).
+**keyboard hook test build 1 works in game**, by the user's report of 2026-11-27 (§4). The next piece of work is the
+player's own key bindings: Chronicle should know when its nav key is a key the game uses (§6,
+`docs/next-session-prompt.md`).
 
 ## 2. Repositories, branches, commits
 
@@ -376,55 +378,67 @@ Start is Settings, Back collapses, R3 alone goes to the top, and L3 + R3 takes o
 
 ## 6. What is left, in rough order
 
-1. **Test build 2 in game: done.** Every check on the retest list works, by the user's report (§4).
-2. **Upstream's render test, for jintawk.** These come from the Windows run and are in upstream's test code,
-   not in this branch:
-   - `wt`'s frame crop hashes depend on the machine. 7 of 8 differ on the user's AMD iGPU with upstream's
-     own code.
+Done, with the detail in §3 and §4: test build 2 of the controller, and the keyboard driver with the choosable nav
+key. Also the choosable controller chord, auto-hide, and the keyboard hook. All work in game. A held arrow keeps turning the
+camera when K takes the keys, until it is let go. The user chose to keep that rule.
+
+1. **Next: the player's own key bindings.** The key hook hides the nav key (K by default) whenever nav is on and the
+   chat line is closed. If the game uses that key for an action, the player loses that action. Nothing warns them
+   today. What is known:
+   - The stock English menu bindings leave D, G, K and O free (the first test report). Nobody confirmed that from the
+     game's own menus.
+   - The bindings with ids 74 to 137 are not in the registry or in `cnf.dat`. They exist only in memory (the second
+     report). The retail client may offer no keyboard remapping at all. If so, a fixed table of the stock bindings
+     per keyboard layout is enough.
+   - The action query walks up to three keyboard bindings per action, in a table at `0x1036E6E8` (2026-11-02 build).
+     Each binding is a WORD: the DIK code, then a flags byte (`0x40`: not while the chat line has focus; other bits:
+     the Shift, Ctrl and Alt rules). There are 188 action ids, with one category WORD each at `0x1036DF98`. The
+     keyboard layout is `[[0x10457BD8]+8]`, and layouts 2 and 3 remap DIK codes through tables at `0x103509B4` and
+     `0x103509D4`. Lego's `kbd_re\bindings.txt` (in its scratch folder) decodes the table. Enter and NumEnter are bound
+     to actions 14, 66, 143, 145 and 147 there.
+   - Open: is the table constant data or written at run time, and by whom? Does any game menu change it? Which
+     actions are the menu letters?
+   - The pad side already does this for the chord: `pad.chord_conflicts` checks the game's `padsin000`, and
+     `//cr status` says "also mapped in the game".
+   `docs/next-session-prompt.md` is the brief.
+2. **A "Chronicle" item in the game's main menu.** Two things are unknown. Can the element array take a sixteenth
+   item? Does `Cmd_ExecuteLine` reach a Windower command? Both need research, and a test in game.
+3. **The three nui pull requests, all open on `jintawk/nui`.** The HD PR and the pad PR add a CI step and a README
+   test paragraph in the same place (`.github/workflows/build.yml` and `README.md`). Whichever merges second needs a
+   rebase onto upstream `main`, and `abi.md` merges cleanly. The key hook PR (`keyboard-key-hook`) builds on the
+   pad PR. GitHub cannot stack a PR on a branch of the fork, so it shows the pad commits until the pad PR merges. If
+   the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`. Answer review comments on the user's behalf
+   only when the user asks. This session cannot read `jintawk/nui`: the user pastes the comments.
+4. **After they merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.6.0. The fork's
+   release numbers (1.3.0 to 1.6.0) give way to upstream's then, so agree on that with the user. DLLs built on the
+   fork's revisions stay compatible with upstream's, because the buses and their frozen layouts are the same.
+5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks. Chronicle must first vendor an
+   upstream nui release that has the pad hook and the key hook. Use a new branch with no `claude/` or
+   `agent/` prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
+6. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, the window's place and size
+   from the pad, and a message filter for the search box (below).
+7. **Upstream's render test, for jintawk.** These come from the Windows run and are in upstream's test code, not in
+   this branch:
+   - `wt`'s frame crop hashes depend on the machine. 7 of 8 differ on the user's AMD iGPU with upstream's own code.
    - `pd`'s first-load timing sits at its limit on a cold first run on that machine.
    - `pd` fails (4 checks, decode time 0) when `wt` or `fr` runs before it in the same process
      (`--only wt,pd`, `--only fr,pd`). It passes alone and in the full run.
-   - gcc 16 warns "null character(s) preserved in literal" at `test_render.cpp:1783`, where the literal
-     holds raw NUL bytes. `"\0\0\0\0IDAT"` would say the same.
-   - gcc 16 warns that `random_merge_list` (`test_build.cpp:450`) and `check_merge` (`test_build.cpp:354`)
-     are defined but not used. The merge checks still run, so they look like dead code.
-3. **The two nui pull requests, both open.** Both add a CI step and a README test paragraph in the same place
-   (`.github/workflows/build.yml` and `README.md`). Whichever merges second needs a rebase onto upstream
-   `main`, and `abi.md` merges cleanly. If the HD PR merges first, rebase `controller-pad-hook`. Answer
-   review comments on the user's behalf only when the user asks.
-4. **After both merge,** Chronicle should vendor an upstream nui release instead of the fork's 1.6.0. The fork's
-   release numbers (1.3.0 to 1.6.0) give way to upstream's then, so agree on that with the user. DLLs built
-   on the fork's revisions 1 to 3 stay compatible with upstream's, because the bus and its frozen layout are
-   the same.
-5. **A Chronicle pull request** to `jintawk/ffxi-chronicle`, only when the user asks, and only once Chronicle
-   can vendor an upstream nui release that has the pad hook. Use a new branch with no `claude/` or `agent/`
-   prefix, and leave the plans and handoffs (`docs/`) off it, as for nui.
-6. **The keyboard driver: built and works in game**, with the choosable nav key, the choosable controller chord
-   and auto-hide (§4). The QA frames matched at `d4417ad`. The user chose not to run them again after builds 4 to
-   6, which change only Settings rows.
-7. **The keyboard hook: built and works in game** (§3, §4). A held arrow keeps turning the camera when K takes the
-   keys, until it is let go. The user chose to keep that rule. The upstream PR branch is `keyboard-key-hook`, stacked
-   on `controller-pad-hook`. GitHub cannot stack a PR on a branch of the fork, so the upstream PR shows the pad
-   commits until the pad PR merges. If the pad PR is squash-merged, rebase `keyboard-key-hook` onto `main`.
-8. **After it,** from `docs/test-findings-plan.md` §7: the player's own key bindings and a main menu item. The
-   research settled the input mask: it gates action categories, not keys (`docs/keyboard-hook-research.md` §1.6).
-   The key bindings matter less now that the hook hides only Chronicle's keys, but the nav key can still clash with a
-   key the player bound in the game. The research found the action bindings table (`0x1036E6E8`, up to three
-   bindings per action), which is a start.
-9. **Optional:** DirectInput as a second PadHook source, QA frames for controller mode, and moving and
-   resizing the window from the pad.
-10. **Small loose ends:**
-   - With Enable XInput off, the first field of the controller line in `//cr status` still reads "ready
-     (L3+R3)", or the chosen chord. `//cr pad` gives the right message, so this is cosmetic.
-   - nui's `example/README.md` says a straight copy of `FFXiMain.dll` will not do as `NUI_FFXI_COPY`. A plain
-     copy works for the 2026-11-02 client.
-   - The `l_screen` comment fix in `src/host.cpp` is only in the fork's 1.5.0, not in either pull request.
+   - gcc 16 warns "null character(s) preserved in literal" at `test_render.cpp:1783`, where the literal holds raw NUL
+     bytes. `"\0\0\0\0IDAT"` would say the same.
+   - gcc 16 warns that `random_merge_list` (`test_build.cpp:450`) and `check_merge` (`test_build.cpp:354`) are
+     defined but not used. The merge checks still run, so they look like dead code.
+8. **Small loose ends:**
+   - With Enable XInput off, the first field of the controller line in `//cr status` still reads "ready (L3+R3)", or
+     the chosen chord. `//cr pad` gives the right message, so this is cosmetic.
+   - nui's `example/README.md` says a straight copy of `FFXiMain.dll` will not do as `NUI_FFXI_COPY`. A plain copy
+     works for the 2026-11-02 client.
+   - The `l_screen` comment fix in `src/host.cpp` is only in the fork's 1.5.0, not in any pull request.
    - `claude/hd-texture-packs` is stale. The user deletes it, because the proxy refuses branch deletes.
    - `test_pad` is not in Chronicle's CI loop. `test_keys`, `test_chord` and `test_autohide` are.
-   - The chat line reads typed text from window messages. A filter there (a message hook on the game's thread)
-     would let the search box use the key hook instead of `keyboard_blockinput`. The user chose to keep the block
-     for the search box for now. Where Windower raises its `keyboard` event is not known, and a message filter
-     must not hide a key from it.
+   - The chat line reads typed text from window messages. A filter there (a message hook on the game's thread) would
+     let the search box use the key hook instead of `keyboard_blockinput`. The user chose to keep the block for the
+     search box for now. Where Windower raises its `keyboard` event is not known, and a message filter must not hide
+     a key from it.
 
 ## 7. Facts from the research worth keeping
 
